@@ -23,9 +23,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!token) return;
 
-    const socket: Socket = io(API_BASE_URL, {
+    const socket: Socket = io(API_BASE_URL || undefined, {
       auth: { token },
-      transports: ["websocket", "polling"],
+      // Polling first so the socket connects through the Next.js proxy even when the
+      // WebSocket upgrade isn't proxied in dev; it upgrades to WS when available.
+      transports: ["polling", "websocket"],
     });
 
     socket.on("connect", () => setRealtime(true));

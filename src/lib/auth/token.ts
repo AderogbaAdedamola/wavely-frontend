@@ -1,4 +1,7 @@
-const TOKEN_KEY = process.env.TOKEN_KEY as string;
+// localStorage key for the JWT. Hardcoded (not env-driven): it isn't a secret and
+// doesn't vary by environment, and a browser-readable env var would need a
+// NEXT_PUBLIC_ prefix anyway — process.env.TOKEN_KEY resolved to undefined here.
+const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY as string;
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
