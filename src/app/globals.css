@@ -1,26 +1,256 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
+
+/* ------------------------------------------------------------------ *
+ * Wavely — "Daylight Dispatch" design system
+ * A signal/dispatch console. Warm paper + petrol ink + amber transmission
+ * accent (light, default). A deep-water "Signal Console" dark theme mirrors it.
+ * Green is a status-only semantic; amber is the brand/transmission accent.
+ * ------------------------------------------------------------------ */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
+  --font-heading: var(--font-display);
+
+  /* Wavely signal + status tokens */
+  --color-signal: var(--signal);
+  --color-aqua: var(--aqua);
+  --color-live: var(--live);
+  --color-warn: var(--warn);
+  --color-standby: var(--standby);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ---------- Light: "Daylight" (default) ---------- */
+:root {
+  --background: #f4f1e9; /* warm paper */
+  --foreground: #143139; /* deep petrol ink */
+
+  --card: #fcfaf4;
+  --card-foreground: #143139;
+  --popover: #fcfaf4;
+  --popover-foreground: #143139;
+
+  --primary: #d98a26; /* amber — transmission */
+  --primary-foreground: #2a1b06;
+
+  --secondary: #e8e2d3; /* pressed paper */
+  --secondary-foreground: #143139;
+
+  --muted: #ebe6da;
+  --muted-foreground: #5b6f77; /* ink muted */
+
+  --accent: #dde9e7; /* pale petrol wash */
+  --accent-foreground: #143139;
+
+  --destructive: #d2543b; /* coral */
+
+  --border: #ded8ca; /* warm hairline */
+  --input: #ded8ca;
+  --ring: #d98a26; /* amber focus */
+
+  --chart-1: #d98a26; /* amber */
+  --chart-2: #227c89; /* aqua */
+  --chart-3: #2e9e6b; /* green */
+  --chart-4: #143139; /* petrol ink */
+  --chart-5: #b9791a; /* warn */
+
+  --radius: 0.5rem;
+
+  /* Wavely signal + status */
+  --signal: #d98a26;
+  --aqua: #227c89;
+  --live: #2e9e6b;
+  --warn: #b9791a;
+  --standby: #8a9aa0;
+
+  --sidebar: #efeadd;
+  --sidebar-foreground: #143139;
+  --sidebar-primary: #d98a26;
+  --sidebar-primary-foreground: #2a1b06;
+  --sidebar-accent: #dde9e7;
+  --sidebar-accent-foreground: #143139;
+  --sidebar-border: #ded8ca;
+  --sidebar-ring: #d98a26;
+}
+
+/* ---------- Dark: "Signal Console" ---------- */
+.dark {
+  --background: #0b1a22; /* deep water at night */
+  --foreground: #e6ede9;
+
+  --card: #12242e;
+  --card-foreground: #e6ede9;
+  --popover: #12242e;
+  --popover-foreground: #e6ede9;
+
+  --primary: #f0a94c; /* glowing amber */
+  --primary-foreground: #1a1204;
+
+  --secondary: #1a2e38;
+  --secondary-foreground: #e6ede9;
+
+  --muted: #172a34;
+  --muted-foreground: #8aa1a6;
+
+  --accent: #163038;
+  --accent-foreground: #e6ede9;
+
+  --destructive: #e8705a;
+
+  --border: #213c46;
+  --input: #274652;
+  --ring: #f0a94c;
+
+  --chart-1: #f0a94c;
+  --chart-2: #46c7d0;
+  --chart-3: #4fc08a;
+  --chart-4: #9fc3c7;
+  --chart-5: #e8b04b;
+
+  --signal: #f0a94c;
+  --aqua: #46c7d0;
+  --live: #4fc08a;
+  --warn: #e8b04b;
+  --standby: #6f878e;
+
+  --sidebar: #0e212b;
+  --sidebar-foreground: #e6ede9;
+  --sidebar-primary: #f0a94c;
+  --sidebar-primary-foreground: #1a1204;
+  --sidebar-accent: #163038;
+  --sidebar-accent-foreground: #e6ede9;
+  --sidebar-border: #213c46;
+  --sidebar-ring: #f0a94c;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv01";
+  }
+  html {
+    @apply font-sans;
+  }
+  /* Instrument data reads as tabular */
+  .font-mono {
+    font-feature-settings: "tnum", "zero";
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--signal) 30%, transparent);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  /* Eyebrow / section label — encodes "channel" labels in the console */
+  .eyebrow {
+    @apply font-mono text-[0.68rem] font-medium uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  /* Faint dispatch grid — a quiet backdrop for the console header only. */
+  .console-grid {
+    background-image:
+      linear-gradient(
+        to right,
+        color-mix(in oklch, var(--foreground) 5%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklch, var(--foreground) 5%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(
+      ellipse 80% 120% at 50% -10%,
+      #000 20%,
+      transparent 75%
+    );
+    mask-image: radial-gradient(
+      ellipse 80% 120% at 50% -10%,
+      #000 20%,
+      transparent 75%
+    );
+  }
+}
+
+/* ---------- Signature waveform + signal motion ---------- */
+@keyframes wave-scroll {
+  to {
+    transform: translateX(-1200px);
+  }
+}
+
+@keyframes signal-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, currentColor 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.wave-scroll {
+  animation: wave-scroll var(--wave-duration, 9s) linear infinite;
+}
+
+.signal-pulse {
+  animation: signal-pulse 2s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave-scroll,
+  .signal-pulse {
+    animation: none !important;
+  }
 }
