@@ -15,18 +15,34 @@ export interface QrResponse {
   qr: string;
 }
 
-/** The authenticated operator, as returned by the auth endpoints and GET /me. */
+/** The authenticated operator, as returned by the auth endpoints and GET /me.
+ *  `email_verified` gates every functional route on the backend (unverified
+ *  callers get 403 EMAIL_NOT_VERIFIED), so the console blocks on it too. */
 export interface AuthUser {
   id: number;
   name: string;
   email: string;
   is_bot_active: boolean;
+  email_verified: boolean;
 }
 
-/** POST /api/auth/register (201) and POST /api/auth/login (200) both return a
- *  bearer token plus the freshly-authenticated user. */
+/** POST /api/auth/login (200) — a bearer token plus the signed-in user. Login
+ *  succeeds even when the email isn't verified; read `user.email_verified`. */
 export interface AuthResponse {
   token: string;
+  user: AuthUser;
+}
+
+/** POST /api/auth/register (201) — no token. The account starts unverified and
+ *  a verification email is sent; the user must sign in separately. */
+export interface RegisterResponse {
+  user: AuthUser;
+  message: string;
+}
+
+/** POST /api/auth/verify-email (200) — the now-verified user. */
+export interface VerifyEmailResponse {
+  success: boolean;
   user: AuthUser;
 }
 

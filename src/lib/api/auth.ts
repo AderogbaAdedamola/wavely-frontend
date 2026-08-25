@@ -1,25 +1,53 @@
 import { apiRequest } from "@/lib/api/client";
-import type { AuthResponse, MeResponse } from "@/lib/types";
+import type {
+  AuthResponse,
+  MeResponse,
+  RegisterResponse,
+  VerifyEmailResponse,
+} from "@/lib/types";
 
-/** Create an account. Returns a token + user directly (201) — no follow-up login. */
+/** Create an account (201). Returns the new user and a message — **no token**.
+ *  A verification email is sent and the account starts unverified; the caller
+ *  must sign in separately. */
 export function register(
   name: string,
   email: string,
   password: string,
   confirmPassword: string,
 ) {
-  return apiRequest<AuthResponse>("/api/auth/register", {
+  return apiRequest<RegisterResponse>("/api/auth/register", {
     method: "POST",
     body: { name, email, password, confirmPassword },
     auth: false,
   });
 }
 
-/** Log in with a name or email (`identifier`) + password. */
-export function login(identifier: string, password: string) {
+/** Log in with email + password. Succeeds even when the email isn't verified —
+ *  read `user.email_verified` to decide whether to show the verify prompt. */
+export function login(email: string, password: string) {
   return apiRequest<AuthResponse>("/api/auth/login", {
     method: "POST",
-    body: { identifier, password },
+    body: { email, password },
+    auth: false,
+  });
+}
+
+/** Verify an email with the single-use token from the verification link. On
+ *  success the token the user already holds clears the EMAIL_NOT_VERIFIED gate. */
+export function verifyEmail(token: string) {
+  return apiRequest<VerifyEmailResponse>("/api/auth/verify-email", {
+    method: "POST",
+    body: { token },
+    auth: false,
+  });
+}
+
+/** Request a fresh verification email. Always resolves the same way whether or
+ *  not the account exists / is already verified (no enumeration). */
+export function resendVerification(email: string) {
+  return apiRequest<{ message: string }>("/api/auth/resend-verification", {
+    method: "POST",
+    body: { email },
     auth: false,
   });
 }
@@ -34,7 +62,8 @@ export function forgotPassword(email: string) {
   });
 }
 
-/** Set a new password using the single-use token from the reset email. */
+/** Set a new password using the single-use token from the reset email. On
+ *  success every previously-issued token for the account is invalidated. */
 export function resetPassword(
   token: string,
   password: string,
@@ -47,7 +76,8 @@ export function resetPassword(
   });
 }
 
-/** The current session's user. `suppressAuthRedirect` is used at bootstrap so a
+/** The current session's user. Not verification-gated, so it works while the
+ *  email is still unverified. `suppressAuthRedirect` is used at bootstrap so a
  *  stale token doesn't bounce a visitor off a public page. */
 export function me(opts?: { suppressAuthRedirect?: boolean }) {
   return apiRequest<MeResponse>("/api/auth/me", {

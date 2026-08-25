@@ -1,14 +1,18 @@
 import { API_BASE_URL } from "@/lib/config";
 import { clearToken, getToken } from "@/lib/auth/token";
 
-/** Error carrying the HTTP status so callers can special-case 401/403/503. */
+/** Error carrying the HTTP status (and any machine-readable `code`) so callers
+ *  can special-case 401 / 403 EMAIL_NOT_VERIFIED / 503. */
 export class ApiError extends Error {
   status: number;
+  /** Backend's machine-readable code, e.g. "EMAIL_NOT_VERIFIED" on the 403 gate. */
+  code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.code = code;
   }
 
   /** 503 = WhatsApp not connected for this account. */
@@ -16,8 +20,16 @@ export class ApiError extends Error {
     return this.status === 503;
   }
 
-  get isAuthError(): boolean {
-    return this.status === 401 || this.status === 403;
+  /** 401 = missing/invalid/expired token → the session is over. A password reset
+   *  also invalidates live tokens, so this can fire before the 24h expiry. */
+  get isSessionExpired(): boolean {
+    return this.status === 401;
+  }
+
+  /** 403 EMAIL_NOT_VERIFIED = the token is valid but the email isn't verified
+   *  yet. Don't sign the user out — prompt them to verify instead. */
+  get isEmailNotVerified(): boolean {
+    return this.status === 403 && this.code === "EMAIL_NOT_VERIFIED";
   }
 }
 
@@ -39,12 +51,17 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
-async function readError(res: Response): Promise<string> {
+async function readError(
+  res: Response,
+): Promise<{ message: string; code?: string }> {
   try {
     const data = await res.json();
-    return (data?.error as string) || (data?.message as string) || "";
+    return {
+      message: (data?.error as string) || (data?.message as string) || "",
+      code: (data?.code as string) || undefined,
+    };
   } catch {
-    return "";
+    return { message: "" };
   }
 }
 
@@ -73,18 +90,27 @@ export async function apiRequest<T>(
     throw new ApiError(0, "Can't reach the Wavely server. Is it running?");
   }
 
-  if (res.status === 401 || res.status === 403) {
-    const message = (await readError(res)) || "Session expired. Please sign in again.";
+  if (res.status === 401) {
+    // Session is over (no/invalid/expired token, or one killed by a password
+    // reset): drop the token and let the global handler bounce to login.
+    const { message } = await readError(res);
     if (auth) {
       clearToken();
       if (!suppressAuthRedirect) unauthorizedHandler?.();
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(401, message || "Session expired. Please sign in again.");
+  }
+
+  if (res.status === 403) {
+    // Token is still valid — the account just can't do this yet (most often
+    // EMAIL_NOT_VERIFIED). Never clear the token or redirect on a 403.
+    const { message, code } = await readError(res);
+    throw new ApiError(403, message || "You don't have access to that.", code);
   }
 
   if (!res.ok) {
-    const message = (await readError(res)) || `Request failed (${res.status}).`;
-    throw new ApiError(res.status, message);
+    const { message } = await readError(res);
+    throw new ApiError(res.status, message || `Request failed (${res.status}).`);
   }
 
   if (res.status === 204) return undefined as T;

@@ -26,14 +26,20 @@ interface AuthContextValue {
   /** True once we've checked storage — guards against redirect flashes. */
   ready: boolean;
   isAuthenticated: boolean;
-  /** `identifier` is the account's name or email. */
-  login: (identifier: string, password: string) => Promise<void>;
+  /** True when the signed-in user's email is verified. The backend gates every
+   *  functional route on this, so the console does too. */
+  isEmailVerified: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  /** Create an account. Resolves to the backend's confirmation message and does
+   *  NOT sign in — no token is issued; the user verifies their email then logs in. */
   register: (
     name: string,
     email: string,
     password: string,
     confirmPassword: string,
-  ) => Promise<void>;
+  ) => Promise<string>;
+  /** Re-fetch the current user (e.g. after verifying email) so gates re-evaluate. */
+  refreshUser: () => Promise<void>;
   logout: () => void;
 }
 
@@ -65,6 +71,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTokenState(null);
     setUser(null);
     queryClient.clear();
+  }, [queryClient]);
+
+  // Re-fetch the current user (e.g. after the email is verified) and refresh the
+  // derived state so the verification gate lifts without a full reload.
+  const refreshUser = useCallback(async () => {
+    const res = await authApi.me();
+    setUser(res.user);
+    queryClient.setQueryData(["settings"], {
+      is_bot_active: res.user.is_bot_active,
+    });
   }, [queryClient]);
 
   // Hydrate from localStorage once on mount. localStorage is client-only, so
@@ -110,8 +126,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [reset, router]);
 
   const login = useCallback(
-    async (identifier: string, password: string) => {
-      const res = await authApi.login(identifier, password);
+    async (email: string, password: string) => {
+      const res = await authApi.login(email, password);
       applyAuth(res.token, res.user);
       router.replace("/");
     },
@@ -125,12 +141,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: string,
       confirmPassword: string,
     ) => {
-      // Registration returns a token directly (201), so we're signed in at once.
+      // No token is returned — the account must verify its email and then sign
+      // in. Hand the confirmation message back so the form can prompt for that.
       const res = await authApi.register(name, email, password, confirmPassword);
-      applyAuth(res.token, res.user);
-      router.replace("/");
+      return res.message;
     },
-    [applyAuth, router],
+    [],
   );
 
   const logout = useCallback(() => {
@@ -148,11 +164,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       userId: user?.id ?? null,
       ready,
       isAuthenticated: !!token,
+      isEmailVerified: !!user?.email_verified,
       login,
       register,
+      refreshUser,
       logout,
     }),
-    [token, user, ready, login, register, logout],
+    [token, user, ready, login, register, refreshUser, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

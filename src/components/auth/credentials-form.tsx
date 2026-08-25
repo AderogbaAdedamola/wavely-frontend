@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  EyeIcon,
+  EyeOffIcon,
+  Loader2Icon,
+} from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,7 +19,6 @@ export function CredentialsForm({ mode }: { mode: "login" | "register" }) {
   const { login, register } = useAuth();
   const isLogin = mode === "login";
 
-  const [identifier, setIdentifier] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,6 +26,7 @@ export function CredentialsForm({ mode }: { mode: "login" | "register" }) {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registeredMessage, setRegisteredMessage] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,15 +40,43 @@ export function CredentialsForm({ mode }: { mode: "login" | "register" }) {
     setLoading(true);
     try {
       if (isLogin) {
-        await login(identifier.trim(), password);
+        // On success the auth provider redirects; keep the button busy meanwhile.
+        await login(email.trim(), password);
       } else {
-        await register(name.trim(), email.trim(), password, confirmPassword);
+        // Registration doesn't sign you in — it sends a verification email and
+        // returns a confirmation message. Show it and point the way to sign in.
+        const message = await register(
+          name.trim(),
+          email.trim(),
+          password,
+          confirmPassword,
+        );
+        setRegisteredMessage(message);
+        setLoading(false);
       }
-      // On success the auth provider redirects; keep the button busy meanwhile.
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setLoading(false);
     }
+  }
+
+  // Register success: the account exists but must verify its email before it can
+  // do anything, so we don't have a session — send them to sign in afterwards.
+  if (registeredMessage) {
+    return (
+      <div className="space-y-4">
+        <Alert>
+          <CheckCircle2Icon className="size-4" />
+          <AlertDescription>{registeredMessage}</AlertDescription>
+        </Alert>
+        <p className="text-sm text-muted-foreground">
+          Check your inbox (and spam) for the verification link, then sign in.
+        </p>
+        <Button asChild size="lg" className="w-full">
+          <Link href="/login">Continue to sign in</Link>
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -54,50 +87,38 @@ export function CredentialsForm({ mode }: { mode: "login" | "register" }) {
         </Alert>
       )}
 
-      {isLogin ? (
+      {!isLogin && (
         <div className="space-y-1.5">
-          <Label htmlFor="identifier">Name or email</Label>
+          <Label htmlFor="name">Name</Label>
           <Input
-            id="identifier"
-            name="identifier"
-            autoComplete="username"
+            id="name"
+            name="name"
+            autoComplete="name"
             autoFocus
             required
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            placeholder="alice@example.com"
+            minLength={2}
+            maxLength={50}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Alice"
           />
         </div>
-      ) : (
-        <>
-          <div className="space-y-1.5">
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              name="name"
-              autoComplete="name"
-              autoFocus
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Alice"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="alice@example.com"
-            />
-          </div>
-        </>
       )}
+
+      <div className="space-y-1.5">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          autoFocus={isLogin}
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="alice@example.com"
+        />
+      </div>
 
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">

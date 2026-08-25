@@ -4,16 +4,18 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/providers/auth-provider";
+import { VerifyEmailNotice } from "@/components/auth/verify-email-notice";
 import { BrandMark } from "@/components/signal/brand-mark";
 import { Waveform } from "@/components/signal/waveform";
 
 /**
  * Client-side route guard for the console. Waits until the token has been read
  * from storage (`ready`) before deciding, so a valid session never flashes the
- * login screen on reload.
+ * login screen on reload. Once authenticated, an unverified email is gated too
+ * — the backend blocks every functional route behind verification.
  */
 export function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { ready, isAuthenticated } = useAuth();
+  const { ready, isAuthenticated, user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -32,6 +34,12 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
+  }
+
+  // Authenticated but the email isn't verified yet → block the console and
+  // prompt for verification rather than let every data request 403.
+  if (user && !user.email_verified) {
+    return <VerifyEmailNotice />;
   }
 
   return <>{children}</>;

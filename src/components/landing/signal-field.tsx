@@ -168,12 +168,27 @@ export function SignalField({ className }: { className?: string }) {
 
     const applyTheme = () => {
       const isDark = document.documentElement.classList.contains("dark");
-      (uniforms.uColorA.value as THREE.Color).set(readVar("--aqua", "#227c89"));
-      (uniforms.uColorB.value as THREE.Color).set(readVar("--signal", "#d98a26"));
-      uniforms.uOpacity.value = isDark ? 0.9 : 0.8;
-      material.blending = isDark
-        ? THREE.AdditiveBlending
-        : THREE.NormalBlending;
+      const trough = uniforms.uColorA.value as THREE.Color;
+      const crest = uniforms.uColorB.value as THREE.Color;
+      if (isDark) {
+        // Glowing cyan→gold on deep water: additive blending stacks into light.
+        trough.set(readVar("--aqua", "#46c7d0"));
+        crest.set(readVar("--signal", "#f0a94c"));
+        uniforms.uOpacity.value = 0.9;
+        uniforms.uSize.value = 3.4 * dpr;
+        material.blending = THREE.AdditiveBlending;
+      } else {
+        // On the cream paper, additive blending blows out to white and mid-tone
+        // dots at partial alpha vanish. So in light mode paint solid ink dots —
+        // a deeper teal trough for contrast, amber crest — at full strength and
+        // a touch larger, blended normally, so the field reads as clearly as it
+        // glows on dark.
+        trough.set("#155e6b");
+        crest.set(readVar("--signal", "#d98a26"));
+        uniforms.uOpacity.value = 1.0;
+        uniforms.uSize.value = 4.3 * dpr;
+        material.blending = THREE.NormalBlending;
+      }
       material.needsUpdate = true;
       renderOnce();
     };

@@ -20,7 +20,6 @@ export function Hero() {
       <div className="relative mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-4 py-20 sm:px-6">
         <div className="max-w-2xl">
           <div className="hero-rise flex items-center gap-3">
-            <p className="eyebrow">WhatsApp automation console</p>
             <SignalChip tone="live" label="On air" pulse />
           </div>
 
