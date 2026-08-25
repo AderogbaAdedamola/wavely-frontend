@@ -32,6 +32,10 @@ interface RequestOptions {
   body?: unknown;
   /** Attach the bearer token (default true). */
   auth?: boolean;
+  /** On 401/403 still clear the token, but don't fire the global session-reset
+   *  handler (which redirects to /login). Used by the bootstrap /me probe so a
+   *  stale token on a public page doesn't bounce the visitor. */
+  suppressAuthRedirect?: boolean;
   signal?: AbortSignal;
 }
 
@@ -48,7 +52,7 @@ export async function apiRequest<T>(
   path: string,
   opts: RequestOptions = {},
 ): Promise<T> {
-  const { method = "GET", body, auth = true, signal } = opts;
+  const { method = "GET", body, auth = true, suppressAuthRedirect, signal } = opts;
 
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
@@ -73,7 +77,7 @@ export async function apiRequest<T>(
     const message = (await readError(res)) || "Session expired. Please sign in again.";
     if (auth) {
       clearToken();
-      unauthorizedHandler?.();
+      if (!suppressAuthRedirect) unauthorizedHandler?.();
     }
     throw new ApiError(res.status, message);
   }

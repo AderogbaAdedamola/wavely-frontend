@@ -15,14 +15,24 @@ export interface QrResponse {
   qr: string;
 }
 
-export interface LoginResponse {
-  token: string;
+/** The authenticated operator, as returned by the auth endpoints and GET /me. */
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
   is_bot_active: boolean;
 }
 
-export interface RegisterResponse {
-  success: boolean;
-  userId: number;
+/** POST /api/auth/register (201) and POST /api/auth/login (200) both return a
+ *  bearer token plus the freshly-authenticated user. */
+export interface AuthResponse {
+  token: string;
+  user: AuthUser;
+}
+
+/** GET /api/auth/me — the current session's user. */
+export interface MeResponse {
+  user: AuthUser;
 }
 
 export interface Group {

@@ -13,23 +13,27 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { setUnauthorizedHandler } from "@/lib/api/client";
 import * as authApi from "@/lib/api/auth";
-import {
-  clearToken,
-  decodeJwt,
-  getToken,
-  isExpired,
-  setToken,
-} from "@/lib/auth/token";
+import { clearToken, getToken, isExpired, setToken } from "@/lib/auth/token";
+import type { AuthUser } from "@/lib/types";
 
 interface AuthContextValue {
   token: string | null;
-  username: string | null;
+  user: AuthUser | null;
+  /** Convenience accessors derived from `user`. */
+  name: string | null;
+  email: string | null;
   userId: number | null;
   /** True once we've checked storage — guards against redirect flashes. */
   ready: boolean;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
+  /** `identifier` is the account's name or email. */
+  login: (identifier: string, password: string) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    password: string,
+    confirmPassword: string,
+  ) => Promise<void>;
   logout: () => void;
 }
 
@@ -39,38 +43,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [token, setTokenState] = useState<string | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
-  const [userId, setUserId] = useState<number | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [ready, setReady] = useState(false);
 
-  const applyToken = useCallback((value: string, fallbackUsername?: string) => {
-    const payload = decodeJwt(value);
-    setTokenState(value);
-    setUsername(payload?.username ?? fallbackUsername ?? null);
-    setUserId(payload?.id ?? payload?.userId ?? null);
-  }, []);
+  // Apply a successful auth response: persist the token, load the user into
+  // state, and seed the settings cache so the telemetry bar shows bot state
+  // immediately (no extra round-trip before the first paint).
+  const applyAuth = useCallback(
+    (nextToken: string, nextUser: AuthUser) => {
+      setToken(nextToken);
+      setTokenState(nextToken);
+      setUser(nextUser);
+      queryClient.setQueryData(["settings"], {
+        is_bot_active: nextUser.is_bot_active,
+      });
+    },
+    [queryClient],
+  );
 
   const reset = useCallback(() => {
     setTokenState(null);
-    setUsername(null);
-    setUserId(null);
+    setUser(null);
     queryClient.clear();
   }, [queryClient]);
 
   // Hydrate from localStorage once on mount. localStorage is client-only, so
-  // this can't be a lazy initializer (it would read empty during SSR prerender);
-  // a one-time mount effect is the correct place to sync it into React state.
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // this can't be a lazy initializer (it would read empty during SSR prerender).
+  // With a valid-looking token we confirm the session against /me (which also
+  // fetches the fresh user); `suppressAuthRedirect` keeps a stale token on a
+  // public page like /welcome from bouncing the visitor to /login.
   useEffect(() => {
     const stored = getToken();
-    if (stored && !isExpired(stored)) {
-      applyToken(stored);
-    } else if (stored) {
-      clearToken();
+    if (!stored || isExpired(stored)) {
+      if (stored) clearToken();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setReady(true);
+      return;
     }
-    setReady(true);
-  }, [applyToken]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+    let cancelled = false;
+    authApi
+      .me({ suppressAuthRedirect: true })
+      .then((res) => {
+        if (!cancelled) applyAuth(stored, res.user);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          clearToken();
+          reset();
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [applyAuth, reset]);
 
   // Any 401/403 from the API client resets the session and bounces to login.
   useEffect(() => {
@@ -82,23 +110,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [reset, router]);
 
   const login = useCallback(
-    async (u: string, p: string) => {
-      const res = await authApi.login(u, p);
-      setToken(res.token);
-      applyToken(res.token, u);
-      // Seed the settings cache so the telemetry bar shows bot state immediately.
-      queryClient.setQueryData(["settings"], { is_bot_active: res.is_bot_active });
+    async (identifier: string, password: string) => {
+      const res = await authApi.login(identifier, password);
+      applyAuth(res.token, res.user);
       router.replace("/");
     },
-    [applyToken, queryClient, router],
+    [applyAuth, router],
   );
 
   const register = useCallback(
-    async (u: string, p: string) => {
-      await authApi.register(u, p);
-      await login(u, p);
+    async (
+      name: string,
+      email: string,
+      password: string,
+      confirmPassword: string,
+    ) => {
+      // Registration returns a token directly (201), so we're signed in at once.
+      const res = await authApi.register(name, email, password, confirmPassword);
+      applyAuth(res.token, res.user);
+      router.replace("/");
     },
-    [login],
+    [applyAuth, router],
   );
 
   const logout = useCallback(() => {
@@ -110,15 +142,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AuthContextValue>(
     () => ({
       token,
-      username,
-      userId,
+      user,
+      name: user?.name ?? null,
+      email: user?.email ?? null,
+      userId: user?.id ?? null,
       ready,
       isAuthenticated: !!token,
       login,
       register,
       logout,
     }),
-    [token, username, userId, ready, login, register, logout],
+    [token, user, ready, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

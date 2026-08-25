@@ -15,7 +15,7 @@ import {
 import { initials } from "@/lib/utils";
 
 export function UserMenu() {
-  const { username, userId, logout } = useAuth();
+  const { name, email, logout } = useAuth();
 
   return (
     <DropdownMenu>
@@ -28,17 +28,17 @@ export function UserMenu() {
         >
           <Avatar className="size-7">
             <AvatarFallback className="bg-secondary text-xs font-medium">
-              {initials(username)}
+              {initials(name)}
             </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
         <div className="px-1.5 py-1.5">
-          <p className="truncate text-sm font-medium">{username ?? "Operator"}</p>
-          {userId != null && (
-            <p className="font-mono text-xs text-muted-foreground">
-              user:{userId}
+          <p className="truncate text-sm font-medium">{name ?? "Operator"}</p>
+          {email && (
+            <p className="truncate font-mono text-xs text-muted-foreground">
+              {email}
             </p>
           )}
         </div>

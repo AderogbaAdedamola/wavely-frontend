@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
 
 import { useAuth } from "@/components/providers/auth-provider";
@@ -11,23 +12,32 @@ import { Label } from "@/components/ui/label";
 
 export function CredentialsForm({ mode }: { mode: "login" | "register" }) {
   const { login, register } = useAuth();
-  const [username, setUsername] = useState("");
+  const isLogin = mode === "login";
+
+  const [identifier, setIdentifier] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isLogin = mode === "login";
-
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (!isLogin && password !== confirmPassword) {
+      setError("Those passwords don't match.");
+      return;
+    }
+
     setLoading(true);
     try {
       if (isLogin) {
-        await login(username.trim(), password);
+        await login(identifier.trim(), password);
       } else {
-        await register(username.trim(), password);
+        await register(name.trim(), email.trim(), password, confirmPassword);
       }
       // On success the auth provider redirects; keep the button busy meanwhile.
     } catch (err) {
@@ -44,22 +54,63 @@ export function CredentialsForm({ mode }: { mode: "login" | "register" }) {
         </Alert>
       )}
 
-      <div className="space-y-1.5">
-        <Label htmlFor="username">Username</Label>
-        <Input
-          id="username"
-          name="username"
-          autoComplete="username"
-          autoFocus
-          required
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="operator"
-        />
-      </div>
+      {isLogin ? (
+        <div className="space-y-1.5">
+          <Label htmlFor="identifier">Name or email</Label>
+          <Input
+            id="identifier"
+            name="identifier"
+            autoComplete="username"
+            autoFocus
+            required
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            placeholder="alice@example.com"
+          />
+        </div>
+      ) : (
+        <>
+          <div className="space-y-1.5">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              name="name"
+              autoComplete="name"
+              autoFocus
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Alice"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="alice@example.com"
+            />
+          </div>
+        </>
+      )}
 
       <div className="space-y-1.5">
-        <Label htmlFor="password">Password</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Password</Label>
+          {isLogin && (
+            <Link
+              href="/forgot-password"
+              className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Forgot password?
+            </Link>
+          )}
+        </div>
         <div className="relative">
           <Input
             id="password"
@@ -67,7 +118,7 @@ export function CredentialsForm({ mode }: { mode: "login" | "register" }) {
             type={show ? "text" : "password"}
             autoComplete={isLogin ? "current-password" : "new-password"}
             required
-            minLength={isLogin ? undefined : 6}
+            minLength={isLogin ? undefined : 8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
@@ -86,12 +137,27 @@ export function CredentialsForm({ mode }: { mode: "login" | "register" }) {
             )}
           </button>
         </div>
-        {!isLogin && (
-          <p className="text-xs text-muted-foreground">
-            Use at least 6 characters.
-          </p>
-        )}
       </div>
+
+      {!isLogin && (
+        <div className="space-y-1.5">
+          <Label htmlFor="confirmPassword">Confirm password</Label>
+          <Input
+            id="confirmPassword"
+            name="confirmPassword"
+            type={show ? "text" : "password"}
+            autoComplete="new-password"
+            required
+            minLength={8}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="••••••••"
+          />
+          <p className="text-xs text-muted-foreground">
+            Use at least 8 characters.
+          </p>
+        </div>
+      )}
 
       <Button type="submit" size="lg" className="w-full" disabled={loading}>
         {loading && <Loader2Icon className="animate-spin" />}

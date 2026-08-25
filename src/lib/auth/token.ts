@@ -1,7 +1,7 @@
-// localStorage key for the JWT. Hardcoded (not env-driven): it isn't a secret and
-// doesn't vary by environment, and a browser-readable env var would need a
-// NEXT_PUBLIC_ prefix anyway — process.env.TOKEN_KEY resolved to undefined here.
-const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY as string;
+// localStorage key for the JWT. Env-driven (NEXT_PUBLIC_ so it's readable in the
+// browser) with a stable fallback, so a missing env var can't wipe the key and
+// silently sign everyone out.
+const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY || "wavely_token";
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -20,8 +20,8 @@ export function clearToken(): void {
 
 export interface JwtPayload {
   id?: number;
-  userId?: number;
-  username?: string;
+  email?: string;
+  name?: string;
   exp?: number;
   iat?: number;
 }

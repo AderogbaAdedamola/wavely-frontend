@@ -16,6 +16,9 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       { source: "/api/:path*", destination: `${BACKEND_ORIGIN}/api/:path*` },
+      // Socket.io polling hits the base path (/socket.io, no trailing segment),
+      // which /socket.io/:path* does not match — so proxy the base path too.
+      { source: "/socket.io", destination: `${BACKEND_ORIGIN}/socket.io/` },
       {
         source: "/socket.io/:path*",
         destination: `${BACKEND_ORIGIN}/socket.io/:path*`,
