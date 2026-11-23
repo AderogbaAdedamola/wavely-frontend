@@ -87,7 +87,7 @@ export function setContent(listId: number, contentText: string) {
 }
 
 export function getContent(listId: number) {
-  return apiRequest<{ content: BroadcastContent | null }>(
+  return apiRequest<{ content: BroadcastContent | null } | undefined>(
     `/api/broadcast/${listId}/content`,
   );
 }

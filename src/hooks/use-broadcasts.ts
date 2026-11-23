@@ -141,7 +141,10 @@ export function useContent(listId: number) {
   const { token } = useAuth();
   return useQuery({
     queryKey: ["broadcast", listId, "content"],
-    queryFn: () => api.getContent(listId).then((r) => r.content),
+    queryFn: () =>
+      api
+        .getContent(listId)
+        .then((response) => response?.content ?? null),
     enabled: !!token && Number.isFinite(listId),
   });
 }

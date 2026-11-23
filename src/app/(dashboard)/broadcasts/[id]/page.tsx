@@ -233,6 +233,7 @@ function MessageEditor({
   const save = useSetContent(listId);
   const [text, setText] = useState(initialText);
   const dirty = text !== initialText;
+  const hasMessage = !!initialText.trim() || !!mediaUrl;
 
   return (
     <form
@@ -242,6 +243,11 @@ function MessageEditor({
       }}
       className="space-y-4"
     >
+      {!hasMessage && (
+        <div className="rounded-lg border border-dashed border-border bg-muted/30 px-3 py-4 text-sm text-muted-foreground">
+          No message
+        </div>
+      )}
       <div className="space-y-1.5">
         <Label htmlFor="messageText">Text</Label>
         <Textarea
