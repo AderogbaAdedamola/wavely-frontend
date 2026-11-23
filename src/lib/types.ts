@@ -90,7 +90,11 @@ export interface SelectableMembersResponse {
 }
 
 export type ScheduleType = "single" | "broadcast";
-export type ScheduleStatus = "pending" | "completed" | "failed";
+export type ScheduleStatus =
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed";
 
 export interface Schedule {
   id: number;
@@ -120,4 +124,6 @@ export interface AiSettings {
 
 export interface SettingsState {
   is_bot_active: boolean;
+  countryCode?: string;
+  timeZone?: string;
 }

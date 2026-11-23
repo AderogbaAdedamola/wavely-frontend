@@ -5,12 +5,19 @@ export function listSchedules() {
   return apiRequest<{ schedules: Schedule[] }>("/api/schedules");
 }
 
+export interface CreateScheduleResponse {
+  success: boolean;
+  scheduleId: number;
+  status: "pending";
+  executeAt: string;
+}
+
 export function createSingle(input: {
   targetJid: string;
   messageContent: string;
   executeAt: string;
 }) {
-  return apiRequest<{ success: boolean }>("/api/schedules/single", {
+  return apiRequest<CreateScheduleResponse>("/api/schedules/single", {
     method: "POST",
     body: input,
   });
@@ -21,7 +28,7 @@ export function createBroadcast(input: {
   messageContent: string;
   executeAt: string;
 }) {
-  return apiRequest<{ success: boolean }>("/api/schedules/broadcast", {
+  return apiRequest<CreateScheduleResponse>("/api/schedules/broadcast", {
     method: "POST",
     body: input,
   });

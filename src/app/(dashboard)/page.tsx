@@ -181,10 +181,12 @@ function BroadcastStat() {
 
 function ScheduleStat() {
   const { data, isLoading } = useSchedules();
-  const pending = data?.filter((s) => s.status === "pending").length;
+  const active = data?.filter(
+    (s) => s.status === "pending" || s.status === "processing",
+  ).length;
   return (
-    <StatCard icon={CalendarClockIcon} label="Pending sends" href="/schedules">
-      {isLoading ? <Skeleton className="h-6 w-8" /> : (pending ?? "—")}
+    <StatCard icon={CalendarClockIcon} label="Active sends" href="/schedules">
+      {isLoading ? <Skeleton className="h-6 w-8" /> : (active ?? "—")}
     </StatCard>
   );
 }
@@ -206,8 +208,10 @@ function PersonaStat() {
 /** The soonest queued sends, newest deadline first. */
 function NextDispatch() {
   const { data, isLoading, isError } = useSchedules();
+  const { data: settings } = useSettings();
+  const timeZone = settings?.timeZone ?? "UTC";
   const upcoming = (data ?? [])
-    .filter((s) => s.status === "pending")
+    .filter((s) => s.status === "pending" || s.status === "processing")
     .sort(
       (a, b) =>
         new Date(a.execute_at).getTime() - new Date(b.execute_at).getTime(),
@@ -249,7 +253,7 @@ function NextDispatch() {
         ) : (
           <ul className="divide-y divide-border">
             {upcoming.map((s) => (
-              <DispatchRow key={s.id} schedule={s} />
+              <DispatchRow key={s.id} schedule={s} timeZone={timeZone} />
             ))}
           </ul>
         )}
@@ -258,7 +262,13 @@ function NextDispatch() {
   );
 }
 
-function DispatchRow({ schedule }: { schedule: Schedule }) {
+function DispatchRow({
+  schedule,
+  timeZone,
+}: {
+  schedule: Schedule;
+  timeZone: string;
+}) {
   const targetLabel =
     schedule.type === "broadcast"
       ? `List #${schedule.target}`
@@ -267,6 +277,11 @@ function DispatchRow({ schedule }: { schedule: Schedule }) {
   return (
     <li className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
       <div className="flex min-w-0 items-center gap-3">
+        {schedule.status === "processing" && (
+          <Badge className="text-aqua" variant="outline">
+            Sending
+          </Badge>
+        )}
         <Badge variant="outline" className="capitalize">
           {schedule.type}
         </Badge>
@@ -280,7 +295,7 @@ function DispatchRow({ schedule }: { schedule: Schedule }) {
       <div className="shrink-0 text-right">
         <p className="text-sm">{relativeTime(schedule.execute_at)}</p>
         <p className="text-xs text-muted-foreground">
-          {formatDateTime(schedule.execute_at)}
+          {formatDateTime(schedule.execute_at, timeZone)}
         </p>
       </div>
     </li>

@@ -8,6 +8,7 @@ import {
   Loader2Icon,
   MegaphoneIcon,
   PlusIcon,
+  Trash2Icon,
   UsersRoundIcon,
 } from "lucide-react";
 
@@ -16,6 +17,17 @@ import { EmptyState } from "@/components/common/empty-state";
 import { ErrorState } from "@/components/common/query-states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogClose,
@@ -33,6 +45,7 @@ import {
   useBroadcasts,
   useCreateList,
   useCreateListWithMembers,
+  useDeleteList,
   useSelectableMembers,
 } from "@/hooks/use-broadcasts";
 import { formatDateTime } from "@/lib/utils";
@@ -66,13 +79,16 @@ export default function BroadcastsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {data.map((list) => (
-            <Link
+            <Card
               key={list.id}
-              href={`/broadcasts/${list.id}`}
-              className="group rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              size="sm"
+              className="group transition hover:ring-foreground/20"
             >
-              <Card size="sm" className="transition group-hover:ring-foreground/20">
-                <CardContent className="flex items-center justify-between gap-3">
+              <CardContent className="flex items-center gap-2">
+                <Link
+                  href={`/broadcasts/${list.id}`}
+                  className="group/link flex min-w-0 flex-1 items-center justify-between gap-3 rounded-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
                   <div className="min-w-0">
                     <p className="truncate font-heading text-sm font-medium">
                       {list.name}
@@ -81,14 +97,55 @@ export default function BroadcastsPage() {
                       Created {formatDateTime(list.created_at)}
                     </p>
                   </div>
-                  <ArrowRightIcon className="size-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
-                </CardContent>
-              </Card>
-            </Link>
+                  <ArrowRightIcon className="size-4 shrink-0 text-muted-foreground transition group-hover/link:translate-x-0.5 group-hover/link:text-foreground" />
+                </Link>
+                <DeleteListButton id={list.id} name={list.name} />
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function DeleteListButton({ id, name }: { id: number; name: string }) {
+  const remove = useDeleteList();
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="shrink-0 text-muted-foreground hover:text-destructive"
+          aria-label={`Delete ${name}`}
+        >
+          <Trash2Icon />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete “{name}”?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This permanently deletes the list, its members, and its message.
+            Lists with a pending or sending schedule can&apos;t be deleted until
+            that schedule is cancelled.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep list</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            disabled={remove.isPending}
+            onClick={() => remove.mutate(id)}
+          >
+            {remove.isPending && <Loader2Icon className="animate-spin" />}
+            Delete list
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 

@@ -33,6 +33,24 @@ export function useCreateList() {
   });
 }
 
+export function useDeleteList() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteList(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["broadcasts"] });
+      toast.success("Broadcast list deleted");
+    },
+    onError: (err) => {
+      const description =
+        err instanceof ApiError && err.status === 409
+          ? "Cancel the list's pending or in-progress schedule, then try again."
+          : (err as Error).message;
+      toast.error("Couldn't delete the list", { description });
+    },
+  });
+}
+
 export function useCreateListWithMembers() {
   const qc = useQueryClient();
   return useMutation({

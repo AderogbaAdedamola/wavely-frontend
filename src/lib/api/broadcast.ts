@@ -16,6 +16,12 @@ export function createList(name: string) {
   });
 }
 
+export function deleteList(id: number) {
+  return apiRequest<{ success: boolean }>(`/api/broadcast/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export function getSelectableMembers() {
   return apiRequest<SelectableMembersResponse>(
     "/api/broadcast/selectable-members",

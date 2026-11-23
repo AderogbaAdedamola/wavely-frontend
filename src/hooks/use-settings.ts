@@ -7,6 +7,8 @@ import {
   getAiSettings,
   getSettings,
   setAiSettings,
+  setLocale,
+  setTimeZone,
   toggleBot,
 } from "@/lib/api/settings";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -29,7 +31,12 @@ export function useToggleBot() {
     onMutate: async (isActive) => {
       await qc.cancelQueries({ queryKey: ["settings"] });
       const prev = qc.getQueryData<SettingsState>(["settings"]);
-      qc.setQueryData<SettingsState>(["settings"], { is_bot_active: isActive });
+      if (prev) {
+        qc.setQueryData<SettingsState>(["settings"], {
+          ...prev,
+          is_bot_active: isActive,
+        });
+      }
       return { prev };
     },
     onError: (err, _isActive, ctx) => {
@@ -39,11 +46,48 @@ export function useToggleBot() {
       });
     },
     onSuccess: (data) => {
-      qc.setQueryData<SettingsState>(["settings"], {
-        is_bot_active: data.is_bot_active,
-      });
+      qc.setQueryData<SettingsState>(["settings"], (previous) =>
+        previous
+          ? { ...previous, is_bot_active: data.is_bot_active }
+          : previous,
+      );
       toast.success(data.is_bot_active ? "Bot armed" : "Bot on standby");
     },
+  });
+}
+
+export function useSaveLocaleSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      countryCode,
+      timeZone,
+    }: {
+      countryCode: string;
+      timeZone: string;
+    }) =>
+      countryCode
+        ? setLocale(countryCode, timeZone)
+        : setTimeZone(timeZone),
+    onSuccess: (result) => {
+      qc.setQueryData<SettingsState>(["settings"], (previous) =>
+        previous
+          ? {
+              ...previous,
+              ...(result.countryCode
+                ? { countryCode: result.countryCode }
+                : {}),
+              timeZone: result.timeZone,
+            }
+          : previous,
+      );
+      qc.invalidateQueries({ queryKey: ["settings"] });
+      toast.success("Locale settings saved");
+    },
+    onError: (err) =>
+      toast.error("Couldn't save locale settings", {
+        description: (err as Error).message,
+      }),
   });
 }
 

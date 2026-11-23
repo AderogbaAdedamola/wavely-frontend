@@ -47,7 +47,7 @@ export function formatJid(jid: string): string {
  * Time helpers
  * ------------------------------------------------------------------ */
 
-export function formatDateTime(iso: string): string {
+export function formatDateTime(iso: string, timeZone?: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString(undefined, {
@@ -55,6 +55,7 @@ export function formatDateTime(iso: string): string {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    ...(timeZone ? { timeZone } : {}),
   });
 }
 
@@ -96,6 +97,44 @@ export function toLocalInputValue(iso: string): string {
 /** Convert a `datetime-local` value (local time) to an ISO 8601 string. */
 export function localInputToIso(value: string): string {
   return new Date(value).toISOString();
+}
+
+export function toZonedInputValue(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const values = Object.fromEntries(
+    parts.map(({ type, value }) => [type, value]),
+  );
+  return `${values.year}-${values.month}-${values.day}T${values.hour}:${values.minute}`;
+}
+
+export function localInputToWallTime(value: string): string {
+  return value.replace("T", " ");
+}
+
+export function getTimeZoneOptions(): string[] {
+  const supported =
+    typeof Intl.supportedValuesOf === "function"
+      ? Intl.supportedValuesOf("timeZone")
+      : [];
+  return [...new Set(["UTC", ...supported])].sort();
+}
+
+export function isValidTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return true;
+  } catch (error) {
+    if (error instanceof RangeError) return false;
+    throw error;
+  }
 }
 
 export function initials(name: string | null | undefined): string {

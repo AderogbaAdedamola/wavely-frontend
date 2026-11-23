@@ -57,14 +57,15 @@ import {
   useDeleteSchedule,
   useSchedules,
 } from "@/hooks/use-schedules";
+import { useSettings } from "@/hooks/use-settings";
 import type { BroadcastList, Schedule, ScheduleStatus } from "@/lib/types";
 import {
   cn,
   formatDateTime,
   formatJid,
-  localInputToIso,
+  localInputToWallTime,
   relativeTime,
-  toLocalInputValue,
+  toZonedInputValue,
 } from "@/lib/utils";
 
 const STATUS: Record<
@@ -72,6 +73,7 @@ const STATUS: Record<
   { label: string; dot: string; text: string }
 > = {
   pending: { label: "Scheduled", dot: "bg-warn", text: "text-warn" },
+  processing: { label: "Sending", dot: "bg-aqua", text: "text-aqua" },
   completed: { label: "Sent", dot: "bg-live", text: "text-live" },
   failed: { label: "Failed", dot: "bg-destructive", text: "text-destructive" },
 };
@@ -93,6 +95,8 @@ function SchedulesView() {
 
   const { data, isLoading, isError, error, refetch } = useSchedules();
   const { data: lists } = useBroadcasts();
+  const { data: settings } = useSettings();
+  const timeZone = settings?.timeZone ?? "UTC";
 
   const { upcoming, history } = useMemo(() => {
     const all = data ?? [];
@@ -100,10 +104,10 @@ function SchedulesView() {
       +new Date(a.execute_at) - +new Date(b.execute_at);
     return {
       upcoming: all
-        .filter((s) => s.status === "pending")
+        .filter((s) => s.status === "pending" || s.status === "processing")
         .sort(byExecuteAsc),
       history: all
-        .filter((s) => s.status !== "pending")
+        .filter((s) => s.status === "completed" || s.status === "failed")
         .sort((a, b) => -byExecuteAsc(a, b)),
     };
   }, [data]);
@@ -118,8 +122,10 @@ function SchedulesView() {
         description="Queue a one-off message or a broadcast to go out later."
         actions={
           <NewScheduleButton
+            key={timeZone}
             lists={lists}
             presetListId={presetListId}
+            timeZone={timeZone}
             autoOpen={presetListId !== undefined}
           />
         }
@@ -139,7 +145,13 @@ function SchedulesView() {
           icon={CalendarClockIcon}
           title="Nothing queued"
           description="Schedule a message and it'll appear here until it sends."
-          action={<NewScheduleButton lists={lists} />}
+          action={
+            <NewScheduleButton
+              key={timeZone}
+              lists={lists}
+              timeZone={timeZone}
+            />
+          }
         />
       ) : (
         <div className="space-y-8">
@@ -149,6 +161,7 @@ function SchedulesView() {
               count={upcoming.length}
               items={upcoming}
               lists={lists}
+              timeZone={timeZone}
             />
           )}
           {history.length > 0 && (
@@ -157,6 +170,7 @@ function SchedulesView() {
               count={history.length}
               items={history}
               lists={lists}
+              timeZone={timeZone}
             />
           )}
         </div>
@@ -175,6 +189,7 @@ function SchedulingCaveat() {
         Schedules are queued here and dispatched by the server&apos;s job runner
         (QStash). If it isn&apos;t configured on the server, schedules save but
         never send — confirm it&apos;s set up with your admin.
+        {" "}Times use your saved time zone.
       </AlertDescription>
     </Alert>
   );
@@ -185,11 +200,13 @@ function ScheduleSection({
   count,
   items,
   lists,
+  timeZone,
 }: {
   title: string;
   count: number;
   items: Schedule[];
   lists: BroadcastList[] | undefined;
+  timeZone: string;
 }) {
   return (
     <section className="space-y-2.5">
@@ -199,7 +216,12 @@ function ScheduleSection({
       </div>
       <ul className="divide-y divide-border overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
         {items.map((s) => (
-          <ScheduleRow key={s.id} schedule={s} lists={lists} />
+          <ScheduleRow
+            key={s.id}
+            schedule={s}
+            lists={lists}
+            timeZone={timeZone}
+          />
         ))}
       </ul>
     </section>
@@ -209,9 +231,11 @@ function ScheduleSection({
 function ScheduleRow({
   schedule,
   lists,
+  timeZone,
 }: {
   schedule: Schedule;
   lists: BroadcastList[] | undefined;
+  timeZone: string;
 }) {
   const status = STATUS[schedule.status];
   const target = targetLabel(schedule, lists);
@@ -233,10 +257,13 @@ function ScheduleRow({
         </div>
         <p className="line-clamp-2 text-sm">{schedule.message_content}</p>
         <p className="text-xs text-muted-foreground">
-          {relativeTime(schedule.execute_at)} · {formatDateTime(schedule.execute_at)}
+          {relativeTime(schedule.execute_at)} ·{" "}
+          {formatDateTime(schedule.execute_at, timeZone)}
         </p>
       </div>
-      <DeleteScheduleButton id={schedule.id} pending={schedule.status === "pending"} />
+      {schedule.status === "pending" && (
+        <DeleteScheduleButton id={schedule.id} />
+      )}
     </li>
   );
 }
@@ -252,10 +279,8 @@ function targetLabel(s: Schedule, lists: BroadcastList[] | undefined): string {
 
 function DeleteScheduleButton({
   id,
-  pending,
 }: {
   id: number;
-  pending: boolean;
 }) {
   const del = useDeleteSchedule();
   return (
@@ -274,9 +299,8 @@ function DeleteScheduleButton({
         <AlertDialogHeader>
           <AlertDialogTitle>Remove this schedule?</AlertDialogTitle>
           <AlertDialogDescription>
-            {pending
-              ? "It won't be sent, and the schedule is deleted. This can't be undone."
-              : "The schedule record is deleted. This can't be undone."}
+            It won&apos;t be sent, and the schedule is deleted. This can&apos;t
+            be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -295,18 +319,22 @@ function DeleteScheduleButton({
 
 /* --------------------------- create dialog --------------------------- */
 
-function defaultWhen(): string {
-  // Seed the picker an hour out so the operator only nudges it.
-  return toLocalInputValue(new Date(Date.now() + 60 * 60 * 1000).toISOString());
+function defaultWhen(timeZone: string): string {
+  return toZonedInputValue(
+    new Date(Date.now() + 60 * 60 * 1000),
+    timeZone,
+  );
 }
 
 function NewScheduleButton({
   lists,
   presetListId,
+  timeZone,
   autoOpen = false,
 }: {
   lists: BroadcastList[] | undefined;
   presetListId?: number;
+  timeZone: string;
   autoOpen?: boolean;
 }) {
   const createSingle = useCreateSingle();
@@ -321,7 +349,7 @@ function NewScheduleButton({
     presetListId !== undefined ? String(presetListId) : "",
   );
   const [message, setMessage] = useState("");
-  const [when, setWhen] = useState(defaultWhen);
+  const [when, setWhen] = useState(() => defaultWhen(timeZone));
 
   const pending = createSingle.isPending || createBroadcast.isPending;
   const hasLists = !!lists && lists.length > 0;
@@ -333,7 +361,7 @@ function NewScheduleButton({
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
-    const executeAt = localInputToIso(when);
+    const executeAt = localInputToWallTime(when);
     const onSuccess = () => {
       setOpen(false);
       setMessage("");
@@ -437,9 +465,19 @@ function NewScheduleButton({
                 id="scheduleWhen"
                 type="datetime-local"
                 value={when}
-                min={toLocalInputValue(new Date().toISOString())}
+                min={toZonedInputValue(new Date(), timeZone)}
                 onChange={(e) => setWhen(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Interpreted in {timeZone}. Set your time zone in{" "}
+                <Link
+                  href="/settings"
+                  className="underline underline-offset-2 hover:text-foreground"
+                >
+                  Settings
+                </Link>
+                .
+              </p>
             </div>
           </div>
 

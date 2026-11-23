@@ -15,6 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,10 +24,15 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   useAiSettings,
   useSaveAiSettings,
+  useSaveLocaleSettings,
   useSettings,
   useToggleBot,
 } from "@/hooks/use-settings";
-import { cn } from "@/lib/utils";
+import {
+  getTimeZoneOptions,
+  isValidTimeZone,
+  cn,
+} from "@/lib/utils";
 
 export default function SettingsPage() {
   return (
@@ -37,8 +43,129 @@ export default function SettingsPage() {
         description="Arm the bot and shape how it replies."
       />
       <BotCard />
+      <LocaleCard />
       <AiCard />
     </div>
+  );
+}
+
+function LocaleCard() {
+  const { data, isLoading, isError, error, refetch } = useSettings();
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Country and time zone</CardTitle>
+        <CardDescription>
+          Schedule messages using your local clock. The time zone is also saved
+          with your account.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <Skeleton className="h-20 w-full" />
+        ) : isError ? (
+          <ErrorState error={error} onRetry={() => refetch()} />
+        ) : (
+          <LocaleForm
+            key={`${data?.countryCode ?? ""}:${data?.timeZone ?? ""}`}
+            initialCountryCode={data?.countryCode ?? ""}
+            initialTimeZone={data?.timeZone ?? "UTC"}
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LocaleForm({
+  initialCountryCode,
+  initialTimeZone,
+}: {
+  initialCountryCode: string;
+  initialTimeZone: string;
+}) {
+  const save = useSaveLocaleSettings();
+  const [countryCode, setCountryCode] = useState(initialCountryCode);
+  const [timeZone, setTimeZone] = useState(initialTimeZone);
+  const trimmedCountryCode = countryCode.trim().toUpperCase();
+  const countryValid =
+    /^[A-Z]{2}$/.test(trimmedCountryCode) ||
+    (trimmedCountryCode === "" && !initialCountryCode);
+  const timeZoneValid = isValidTimeZone(timeZone.trim());
+  const dirty =
+    trimmedCountryCode !== initialCountryCode ||
+    timeZone.trim() !== initialTimeZone;
+  const timeZones = getTimeZoneOptions();
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!dirty || !countryValid || !timeZoneValid) return;
+    save.mutate({
+      countryCode: trimmedCountryCode,
+      timeZone: timeZone.trim(),
+    });
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="countryCode">Country code (optional)</Label>
+          <Input
+            id="countryCode"
+            value={countryCode}
+            onChange={(e) => setCountryCode(e.target.value.toUpperCase())}
+            maxLength={2}
+            autoComplete="country"
+            placeholder="NG"
+            aria-invalid={!countryValid}
+          />
+          {!countryValid && (
+            <p className="text-xs text-destructive">
+              Enter a two-letter ISO country code. A saved country can&apos;t be
+              cleared here.
+            </p>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="timeZone">IANA time zone</Label>
+          <Input
+            id="timeZone"
+            list="wavely-time-zones"
+            value={timeZone}
+            onChange={(e) => setTimeZone(e.target.value)}
+            placeholder="Africa/Lagos"
+            aria-invalid={!timeZoneValid}
+          />
+          <datalist id="wavely-time-zones">
+            {[...new Set([...timeZones, initialTimeZone])].map((zone) => (
+              <option key={zone} value={zone} />
+            ))}
+          </datalist>
+          {!timeZoneValid && (
+            <p className="text-xs text-destructive">
+              Enter a valid IANA time-zone name.
+            </p>
+          )}
+        </div>
+      </div>
+      <Alert>
+        <AlertDescription>
+          Country defaults may be inferred from your WhatsApp number. Your
+          selected time zone determines when scheduled sends run.
+        </AlertDescription>
+      </Alert>
+      <div className="flex justify-end">
+        <Button
+          type="submit"
+          disabled={!dirty || !countryValid || !timeZoneValid || save.isPending}
+        >
+          {save.isPending && <Loader2Icon className="animate-spin" />}
+          Save locale
+        </Button>
+      </div>
+    </form>
   );
 }
 
