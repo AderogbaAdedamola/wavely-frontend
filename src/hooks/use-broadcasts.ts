@@ -102,6 +102,47 @@ export function useAddMember(listId: number) {
   );
 }
 
+export function useAddMembers(listId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (jids: string[]) => {
+      const failedJids: string[] = [];
+      let firstError: unknown;
+
+      for (let index = 0; index < jids.length; index += 10) {
+        const batch = jids.slice(index, index + 10);
+        const results = await Promise.allSettled(
+          batch.map((jid) => api.addMember(listId, jid)),
+        );
+
+        results.forEach((result, batchIndex) => {
+          if (result.status === "rejected") {
+            failedJids.push(batch[batchIndex]);
+            firstError ??= result.reason;
+          }
+        });
+      }
+
+      return {
+        added: jids.length - failedJids.length,
+        failedJids,
+        errorMessage:
+          firstError instanceof Error ? firstError.message : undefined,
+      };
+    },
+    onSuccess: ({ added, failedJids, errorMessage }) => {
+      qc.invalidateQueries({ queryKey: ["broadcast", listId, "members"] });
+      if (failedJids.length > 0) {
+        toast.error(`${added} added, ${failedJids.length} couldn't be added`, {
+          description: errorMessage,
+        });
+      } else {
+        toast.success(`Added ${added} members`);
+      }
+    },
+  });
+}
+
 export function useRemoveMember(listId: number) {
   return useMembersMutation<string>(
     listId,

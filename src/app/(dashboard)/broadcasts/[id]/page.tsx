@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -8,6 +8,7 @@ import {
   CalendarClockIcon,
   Loader2Icon,
   PlugZapIcon,
+  RefreshCwIcon,
   UserPlusIcon,
   XIcon,
 } from "lucide-react";
@@ -33,13 +34,16 @@ import {
   useAddByMember,
   useAddByTag,
   useAddMember,
+  useAddMembers,
   useBroadcasts,
   useContent,
   useMembers,
   useRemoveMember,
+  useSelectableMembers,
   useSetContent,
 } from "@/hooks/use-broadcasts";
-import { formatJid } from "@/lib/utils";
+import { ApiError } from "@/lib/api/client";
+import { cn, formatJid } from "@/lib/utils";
 
 export default function BroadcastDetailPage() {
   const params = useParams<{ id: string }>();
@@ -90,9 +94,42 @@ function MembersCard({ listId }: { listId: number }) {
   const { data: members, isLoading, isError, error, refetch } =
     useMembers(listId);
   const addMember = useAddMember(listId);
+  const addMembers = useAddMembers(listId);
   const addByTag = useAddByTag(listId);
   const addByMember = useAddByMember(listId);
   const removeMember = useRemoveMember(listId);
+  const selectable = useSelectableMembers();
+  const [selected, setSelected] = useState<string[]>([]);
+  const existingMembers = useMemo(() => new Set(members ?? []), [members]);
+  const selectableMembers = useMemo(
+    () => [
+      ...(selectable.data?.contacts ?? []),
+      ...(selectable.data?.groups ?? []),
+    ],
+    [selectable.data],
+  );
+  const selectedAvailable = selected.filter(
+    (jid) => !existingMembers.has(jid),
+  );
+  const needsConnection =
+    selectable.error instanceof ApiError &&
+    selectable.error.isConnectionRequired;
+
+  function toggleSelection(jid: string) {
+    setSelected((current) => {
+      if (current.includes(jid)) {
+        return current.filter((item) => item !== jid);
+      }
+      if (current.length >= 500) return current;
+      return [...current, jid];
+    });
+  }
+
+  function addSelected() {
+    addMembers.mutate(selectedAvailable, {
+      onSuccess: ({ failedJids }) => setSelected(failedJids),
+    });
+  }
 
   return (
     <Card>
@@ -118,6 +155,116 @@ function MembersCard({ listId }: { listId: number }) {
             A phone with country code, or a full WhatsApp JID.
           </p>
         </div>
+
+        <section className="space-y-3 rounded-lg border border-border/70 bg-muted/30 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-medium">Choose from WhatsApp</h3>
+              <p className="text-xs text-muted-foreground">
+                Select people or groups, then add them together.
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => selectable.refetch()}
+              disabled={selectable.isFetching}
+              aria-label="Refresh WhatsApp contacts and groups"
+            >
+              <RefreshCwIcon
+                className={cn(selectable.isFetching && "animate-spin")}
+              />
+              Refresh
+            </Button>
+          </div>
+
+          {selectable.isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </div>
+          ) : selectable.isError ? (
+            <p className="text-sm text-muted-foreground" role="status">
+              {needsConnection
+                ? "Connect your WhatsApp line to browse contacts and groups."
+                : `Couldn't load contacts and groups: ${selectable.error.message}`}
+            </p>
+          ) : selectableMembers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No contacts or groups available.
+            </p>
+          ) : (
+            <>
+              <div className="max-h-64 divide-y divide-border overflow-y-auto rounded-md border border-border bg-background">
+                {selectableMembers.map((member) => {
+                  const alreadyAdded = existingMembers.has(member.jid);
+                  const checked = selected.includes(member.jid);
+                  const atLimit = selected.length >= 500 && !checked;
+
+                  return (
+                    <label
+                      key={member.jid}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 text-sm",
+                        alreadyAdded
+                          ? "cursor-not-allowed opacity-50"
+                          : "cursor-pointer hover:bg-muted/50",
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={alreadyAdded || atLimit || addMembers.isPending}
+                        onChange={() => toggleSelection(member.jid)}
+                        className="size-4 accent-primary"
+                      />
+                      <span className="min-w-0 flex-1 truncate">
+                        <span className="block truncate font-medium">
+                          {member.name || member.jid}
+                        </span>
+                        <span className="block truncate font-mono text-xs text-muted-foreground">
+                          {member.type === "group" ? "Group" : "Person"}
+                          {member.type === "group" &&
+                          member.participantCount !== undefined
+                            ? ` · ${member.participantCount} members`
+                            : ""}
+                        </span>
+                      </span>
+                      {alreadyAdded && (
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          Added
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {selected.length} selected
+                  {selectedAvailable.length !== selected.length &&
+                    ` · ${selected.length - selectedAvailable.length} already added`}
+                  {selected.length >= 500 && " · 500 selection maximum"}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={addSelected}
+                  disabled={selectedAvailable.length === 0 || addMembers.isPending}
+                >
+                  {addMembers.isPending ? (
+                    <Loader2Icon className="animate-spin" />
+                  ) : (
+                    <UserPlusIcon />
+                  )}
+                  Add selected
+                </Button>
+              </div>
+            </>
+          )}
+        </section>
 
         {/* Imports resolve against WhatsApp — they need a linked line. */}
         <div className="space-y-3 rounded-lg border border-border/70 bg-muted/30 p-3">
