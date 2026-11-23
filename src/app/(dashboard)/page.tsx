@@ -5,7 +5,7 @@ import {
   CalendarClockIcon,
   type LucideIcon,
   MegaphoneIcon,
-  SparklesIcon,
+  MessageCircleIcon,
 } from "lucide-react";
 
 import { Waveform } from "@/components/signal/waveform";
@@ -200,7 +200,7 @@ function PersonaStat() {
   const { data, isLoading } = useAiSettings();
   const name = data?.aiName?.trim();
   return (
-    <StatCard icon={SparklesIcon} label="AI persona" href="/settings">
+    <StatCard icon={MessageCircleIcon} label="Reply style" href="/settings">
       {isLoading ? (
         <Skeleton className="h-6 w-24" />
       ) : (

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Bricolage_Grotesque } from "next/font/google";
+import { DM_Sans, Geist_Mono, Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers/providers";
 
-const geistSans = Geist({
-  variable: "--font-sans",
+const dmSans = DM_Sans({
+  variable: "--font-body",
   subsets: ["latin"],
 });
 
@@ -23,7 +23,7 @@ const bricolage = Bricolage_Grotesque({
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 const description =
-  "Arm your WhatsApp bot, broadcast in waves, schedule sends, and tune its AI persona — all from one operator console.";
+  "Arm your WhatsApp bot, broadcast in waves, schedule sends, and shape its reply style — all from one operator console.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -66,7 +66,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
     >
       <body className="min-h-full">
         <Providers>{children}</Providers>

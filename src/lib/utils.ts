@@ -127,6 +127,85 @@ export function getTimeZoneOptions(): string[] {
   return [...new Set(["UTC", ...supported])].sort();
 }
 
+const COUNTRY_CODES =
+  "AD AE AF AG AI AL AM AO AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BW BY BZ CA CC CD CG CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG ER ES ET FI FJ FK FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GT GU GW GY HK HN HR HT HU ID IE IL IM IN IO IQ IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW";
+
+const COUNTRY_NAMES = new Intl.DisplayNames(["en"], { type: "region" });
+
+export function getCountryOptions(): { value: string; label: string }[] {
+  return [...new Set(COUNTRY_CODES.split(" "))]
+    .map((value) => ({ value, label: COUNTRY_NAMES.of(value) ?? value }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+export function getTimeZoneCityLabel(timeZone: string): string {
+  if (timeZone === "UTC") return "UTC";
+
+  const knownLabels: Record<string, string> = {
+    "Africa/Accra": "Accra, Ghana",
+    "Africa/Cairo": "Cairo, Egypt",
+    "Africa/Johannesburg": "Johannesburg, South Africa",
+    "Africa/Lagos": "Lagos, Nigeria",
+    "Africa/Nairobi": "Nairobi, Kenya",
+    "America/Chicago": "Chicago, United States",
+    "America/Los_Angeles": "Los Angeles, United States",
+    "America/Mexico_City": "Mexico City, Mexico",
+    "America/New_York": "New York, United States",
+    "America/Sao_Paulo": "São Paulo, Brazil",
+    "America/Toronto": "Toronto, Canada",
+    "America/Vancouver": "Vancouver, Canada",
+    "Asia/Dubai": "Dubai, United Arab Emirates",
+    "Asia/Kolkata": "Mumbai, India",
+    "Asia/Seoul": "Seoul, South Korea",
+    "Asia/Singapore": "Singapore",
+    "Asia/Tokyo": "Tokyo, Japan",
+    "Australia/Sydney": "Sydney, Australia",
+    "Europe/Berlin": "Berlin, Germany",
+    "Europe/London": "London, United Kingdom",
+    "Europe/Paris": "Paris, France",
+    "Pacific/Auckland": "Auckland, New Zealand",
+  };
+  const knownLabel = knownLabels[timeZone];
+  if (knownLabel) return knownLabel;
+
+  const parts = timeZone.split("/");
+  const city = (parts.pop() ?? timeZone).replaceAll("_", " ");
+  const area = parts.at(-1)?.replaceAll("_", " ");
+  return area ? `${city}, ${area}` : city;
+}
+
+export function getTimeZoneGroup(timeZone: string): string {
+  const region = timeZone.split("/")[0];
+  const groups: Record<string, string> = {
+    Africa: "Africa",
+    America: "The Americas",
+    Antarctica: "Antarctica",
+    Arctic: "Arctic",
+    Asia: "Asia",
+    Atlantic: "Atlantic",
+    Australia: "Australia",
+    Europe: "Europe",
+    Indian: "Indian Ocean",
+    Pacific: "Pacific",
+    UTC: "Other",
+  };
+  return groups[region] ?? "Other";
+}
+
+export function getTimeZoneOffset(timeZone: string): string {
+  const offset = new Intl.DateTimeFormat("en", {
+    timeZone,
+    timeZoneName: "longOffset",
+  })
+    .formatToParts(new Date())
+    .find((part) => part.type === "timeZoneName")?.value;
+
+  if (!offset || offset === "GMT" || offset === "GMT+00:00") {
+    return "UTC+00:00";
+  }
+  return offset.replace(/^GMT/, "UTC");
+}
+
 export function isValidTimeZone(value: string): boolean {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: value });

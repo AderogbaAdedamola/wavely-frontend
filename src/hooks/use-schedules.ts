@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import * as api from "@/lib/api/schedules";
 import { ApiError } from "@/lib/api/client";
-import { formatDateTime } from "@/lib/utils";
+import { formatDateTime, getTimeZoneCityLabel } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 
 /** Every schedule (pending, completed, failed) for the operator. */
@@ -40,7 +40,7 @@ export function useCreateSingle() {
           ? `Send scheduled for ${formatDateTime(
               result.executeAt,
               variables.timeZone,
-            )} (${variables.timeZone})`
+            )} in ${getTimeZoneCityLabel(variables.timeZone)}`
           : "Send scheduled",
       );
     },
@@ -66,7 +66,7 @@ export function useCreateBroadcast() {
           ? `Broadcast scheduled for ${formatDateTime(
               result.executeAt,
               variables.timeZone,
-            )} (${variables.timeZone})`
+            )} in ${getTimeZoneCityLabel(variables.timeZone)}`
           : "Broadcast scheduled",
       );
     },

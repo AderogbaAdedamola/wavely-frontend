@@ -43,7 +43,7 @@ export default function CommandsPage() {
       <PageHeader
         eyebrow="Control"
         title="Commands"
-        description="Choose who can run each command and whether the AI may trigger it."
+        description="Choose who can run each command and whether automated replies can use it."
       />
 
       <GlobalConfigNote />
@@ -64,7 +64,7 @@ export default function CommandsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Command</TableHead>
-                <TableHead className="text-center">AI</TableHead>
+                <TableHead className="text-center">Replies</TableHead>
                 <TableHead className="text-center">Public</TableHead>
                 <TableHead className="text-right">Access</TableHead>
               </TableRow>
@@ -109,7 +109,7 @@ function CommandRow({ cmd }: { cmd: CommandPermission }) {
           checked={cmd.allow_ai}
           onCheckedChange={(v) => patch({ allow_ai: v })}
           disabled={update.isPending}
-          aria-label={`Let the AI run ${cmdLabel(cmd.command_name)}`}
+          aria-label={`Let automated replies run ${cmdLabel(cmd.command_name)}`}
         />
       </TableCell>
       <TableCell className="text-center">

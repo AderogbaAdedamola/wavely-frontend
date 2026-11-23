@@ -30,12 +30,17 @@ import {
   useToggleBot,
 } from "@/hooks/use-settings";
 import {
+  getCountryOptions,
+  getTimeZoneCityLabel,
+  getTimeZoneGroup,
+  getTimeZoneOffset,
   getTimeZoneOptions,
   isValidTimeZone,
   cn,
 } from "@/lib/utils";
 
 const TIME_ZONE_OPTIONS = getTimeZoneOptions();
+const COUNTRY_OPTIONS = getCountryOptions();
 
 export default function SettingsPage() {
   return (
@@ -47,7 +52,7 @@ export default function SettingsPage() {
       />
       <BotCard />
       <LocaleCard />
-      <AiCard />
+      <ReplyStyleCard />
     </div>
   );
 }
@@ -60,10 +65,9 @@ function LocaleCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Country and time zone</CardTitle>
+        <CardTitle>Your time zone</CardTitle>
         <CardDescription>
-          Schedule messages using your local clock. The time zone is also saved
-          with your account.
+          Choose your city so scheduled messages go out at the right local time.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -97,28 +101,49 @@ function LocaleForm({
   browserTimeZone: string;
 }) {
   const save = useSaveLocaleSettings();
-  const [countryCode, setCountryCode] = useState(initialCountryCode);
+  const [countryCode, setCountryCode] = useState(
+    initialCountryCode.trim().toUpperCase(),
+  );
   const [timeZone, setTimeZone] = useState(initialTimeZone);
   const trimmedCountryCode = countryCode.trim().toUpperCase();
   const normalizedInitialCountryCode = initialCountryCode.trim().toUpperCase();
   const countryValid =
-    /^[A-Z]{2}$/.test(trimmedCountryCode) ||
+    COUNTRY_OPTIONS.some((country) => country.value === trimmedCountryCode) ||
+    trimmedCountryCode === normalizedInitialCountryCode ||
     (trimmedCountryCode === "" && !normalizedInitialCountryCode);
   const timeZoneValid = isValidTimeZone(timeZone.trim());
   const dirty =
     trimmedCountryCode !== normalizedInitialCountryCode ||
     timeZone.trim() !== initialTimeZone;
-  const formattedNow = isValidTimeZone(timeZone.trim())
+  const formattedNow = timeZoneValid
     ? new Intl.DateTimeFormat(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
+        timeStyle: "short",
         timeZone: timeZone.trim(),
-        timeZoneName: "short",
       }).format(new Date())
     : null;
+  const timeZoneOptions = [
+    ...new Set([...TIME_ZONE_OPTIONS, initialTimeZone, browserTimeZone]),
+  ]
+    .filter(isValidTimeZone)
+    .sort((a, b) => {
+      const groupOrder = getTimeZoneGroup(a).localeCompare(getTimeZoneGroup(b));
+      return groupOrder || getTimeZoneCityLabel(a).localeCompare(getTimeZoneCityLabel(b));
+    });
+  const timeZoneGroups = timeZoneOptions.reduce<Record<string, string[]>>(
+    (groups, zone) => {
+      const group = getTimeZoneGroup(zone);
+      (groups[group] ??= []).push(zone);
+      return groups;
+    },
+    {},
+  );
+  const countryOptions = initialCountryCode &&
+    !COUNTRY_OPTIONS.some((country) => country.value === normalizedInitialCountryCode)
+    ? [
+        ...COUNTRY_OPTIONS,
+        { value: normalizedInitialCountryCode, label: normalizedInitialCountryCode },
+      ]
+    : COUNTRY_OPTIONS;
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -134,26 +159,31 @@ function LocaleForm({
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="countryCode">Country code (optional when unset)</Label>
-          <Input
+          <Label htmlFor="countryCode">Country (optional)</Label>
+          <select
             id="countryCode"
+            className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             value={countryCode}
-            onChange={(e) => setCountryCode(e.target.value.toUpperCase())}
-            maxLength={2}
-            autoComplete="country"
-            placeholder="NG"
+            onChange={(e) => setCountryCode(e.target.value)}
+            autoComplete="country-name"
             aria-invalid={!countryValid}
-          />
-          {!countryValid && (
-            <p className="text-xs text-destructive">
-              Enter a two-letter ISO country code. A saved country can&apos;t be
-              cleared here.
-            </p>
-          )}
+          >
+            {!normalizedInitialCountryCode && (
+              <option value="">Choose a country if needed</option>
+            )}
+            {countryOptions.map((country) => (
+              <option key={country.value} value={country.value}>
+                {country.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Leave this alone unless you need to change your country.
+          </p>
         </div>
         <div className="space-y-1.5">
           <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="timeZone">IANA time zone</Label>
+            <Label htmlFor="timeZone">City</Label>
             {timeZone.trim() !== browserTimeZone && (
               <Button
                 type="button"
@@ -162,34 +192,30 @@ function LocaleForm({
                 onClick={() => setTimeZone(browserTimeZone)}
               >
                 <RotateCcwIcon />
-                Use this device
+                Use this device&apos;s city
               </Button>
             )}
           </div>
-          <Input
+          <select
             id="timeZone"
-            list="wavely-time-zones"
+            className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
             value={timeZone}
             onChange={(e) => setTimeZone(e.target.value)}
-            placeholder="Africa/Lagos"
             aria-invalid={!timeZoneValid}
-            autoCapitalize="off"
-            spellCheck={false}
-          />
-          <datalist id="wavely-time-zones">
-            {[
-              ...new Set([
-                ...TIME_ZONE_OPTIONS,
-                initialTimeZone,
-                browserTimeZone,
-              ]),
-            ].map((zone) => (
-              <option key={zone} value={zone} />
+          >
+            {Object.entries(timeZoneGroups).map(([group, zones]) => (
+              <optgroup key={group} label={group}>
+                {zones.map((zone) => (
+                  <option key={zone} value={zone}>
+                    {getTimeZoneCityLabel(zone)} — {getTimeZoneOffset(zone)}
+                  </option>
+                ))}
+              </optgroup>
             ))}
-          </datalist>
+          </select>
           {!timeZoneValid && (
             <p className="text-xs text-destructive">
-              Enter a valid IANA time-zone name.
+              Choose a city from the list.
             </p>
           )}
         </div>
@@ -197,16 +223,14 @@ function LocaleForm({
       <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
         <MapPinIcon className="size-4 shrink-0" />
         {formattedNow
-          ? `Current time in ${timeZone.trim()}: ${formattedNow}`
-          : "Enter a valid time zone to preview its current time."}
+          ? `Local time in ${getTimeZoneCityLabel(timeZone.trim())}: ${formattedNow}`
+          : "Choose a city to see its current local time."}
       </p>
       <Alert>
         <AlertDescription>
           {isTimeZoneSaved
-            ? "Your saved time zone is used for schedule entry and display."
-            : "This device's time zone is preselected. Save it to use the same schedule time zone across devices."}{" "}
-          Country defaults may be inferred from your WhatsApp number. A country
-          can have multiple time zones; select the one you actually use.
+            ? "Your saved city is used when you schedule messages. Daylight-saving time changes are handled automatically."
+            : "Your device's city is selected for you. Save it to keep your schedule times consistent across devices."}
         </AlertDescription>
       </Alert>
       <div className="flex justify-end">
@@ -215,7 +239,7 @@ function LocaleForm({
           disabled={!dirty || !countryValid || !timeZoneValid || save.isPending}
         >
           {save.isPending && <Loader2Icon className="animate-spin" />}
-          Save locale
+          Save changes
         </Button>
       </div>
     </form>
@@ -261,16 +285,16 @@ function BotCard() {
   );
 }
 
-/** Global: the AI's name and system prompt (shared server-wide today). */
-function AiCard() {
+/** Shared reply name and guidance. */
+function ReplyStyleCard() {
   const { data, isLoading, isError, error, refetch } = useAiSettings();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>AI persona</CardTitle>
+        <CardTitle>Reply style</CardTitle>
         <CardDescription>
-          Give the AI a name and a system prompt that defines how it behaves.
+          Choose the name and tone people will see in your replies.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -323,7 +347,7 @@ function AiForm({
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="aiPrompt">System prompt</Label>
+        <Label htmlFor="aiPrompt">Instructions</Label>
         <Textarea
           id="aiPrompt"
           value={prompt}
@@ -333,13 +357,13 @@ function AiForm({
           placeholder="You are a warm, concise assistant for a small business…"
         />
         <p className="text-xs text-muted-foreground">
-          Sets the AI&apos;s role, tone, and boundaries.
+          Describe how you want replies to sound and what they should focus on.
         </p>
       </div>
       <div className="flex justify-end">
         <Button type="submit" disabled={!dirty || save.isPending}>
           {save.isPending && <Loader2Icon className="animate-spin" />}
-          Save persona
+          Save reply style
         </Button>
       </div>
     </form>

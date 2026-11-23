@@ -11,7 +11,7 @@ const STEPS = [
     n: "02",
     tag: "activate",
     title: "Arm the bot",
-    body: "Flip the switch and set the persona. Wavely starts answering incoming messages in the voice you gave it.",
+    body: "Flip the switch and choose a reply style. Wavely starts answering incoming messages in the voice you gave it.",
   },
   {
     n: "03",

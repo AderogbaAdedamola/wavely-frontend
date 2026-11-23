@@ -63,6 +63,7 @@ import {
   cn,
   formatDateTime,
   formatJid,
+  getTimeZoneCityLabel,
   localInputToWallTime,
   relativeTime,
   toZonedInputValue,
@@ -138,7 +139,7 @@ function SchedulesView() {
           <InfoIcon />
           <AlertTitle>Time zone not saved yet</AlertTitle>
           <AlertDescription className="text-muted-foreground">
-            Using this device&apos;s time zone ({timeZone}). Save it in{" "}
+            Using your device&apos;s time zone ({getTimeZoneCityLabel(timeZone)}). Save it in{" "}
             <Link
               href="/settings"
               className="underline underline-offset-2 hover:text-foreground"
@@ -495,7 +496,7 @@ function NewScheduleButton({
                 onChange={(e) => setWhen(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Interpreted in {timeZone}. Set your time zone in{" "}
+                Uses {getTimeZoneCityLabel(timeZone)} time. Set your time zone in{" "}
                 <Link
                   href="/settings"
                   className="underline underline-offset-2 hover:text-foreground"

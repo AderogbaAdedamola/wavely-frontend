@@ -1,7 +1,7 @@
 import {
   CalendarClockIcon,
   MegaphoneIcon,
-  SparklesIcon,
+  MessageCircleIcon,
 } from "lucide-react";
 
 import { Waveform } from "@/components/signal/waveform";
@@ -14,7 +14,7 @@ import { Reveal } from "./reveal";
 const TILES = [
   { icon: MegaphoneIcon, label: "Broadcast lists", value: "3" },
   { icon: CalendarClockIcon, label: "Pending sends", value: "2" },
-  { icon: SparklesIcon, label: "AI persona", value: "Aria" },
+  { icon: MessageCircleIcon, label: "Reply style", value: "Aria" },
 ];
 
 export function ConsolePreview() {

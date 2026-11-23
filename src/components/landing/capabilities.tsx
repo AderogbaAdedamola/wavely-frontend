@@ -4,7 +4,7 @@ import {
   MegaphoneIcon,
   PowerIcon,
   QrCodeIcon,
-  SparklesIcon,
+  MessageCircleIcon,
   TerminalIcon,
 } from "lucide-react";
 
@@ -44,9 +44,9 @@ const CAPABILITIES: Capability[] = [
     body: "Queue a single message or a whole broadcast for a future moment and let the dispatcher fire it on time.",
   },
   {
-    icon: SparklesIcon,
+    icon: MessageCircleIcon,
     tag: "persona",
-    title: "Tune the AI persona",
+    title: "Shape your reply style",
     body: "Give the bot a name and a voice. Shape how it answers so automated replies still sound like you.",
   },
   {

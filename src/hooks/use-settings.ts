@@ -98,10 +98,10 @@ export function useSaveLocaleSettings() {
           : previous,
       );
       qc.invalidateQueries({ queryKey: ["settings"] });
-      toast.success("Locale settings saved");
+      toast.success("Location settings saved");
     },
     onError: (err) =>
-      toast.error("Couldn't save locale settings", {
+      toast.error("Couldn't save location settings", {
         description: (err as Error).message,
       }),
   });
@@ -122,10 +122,10 @@ export function useSaveAiSettings() {
     mutationFn: (input: Partial<AiSettings>) => setAiSettings(input),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["settings", "ai"] });
-      toast.success("AI persona saved");
+      toast.success("Reply style saved");
     },
     onError: (err) => {
-      toast.error("Couldn't save AI settings", {
+      toast.error("Couldn't save reply settings", {
         description: (err as Error).message,
       });
     },
