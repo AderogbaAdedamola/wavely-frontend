@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import * as api from "@/lib/api/schedules";
 import { ApiError } from "@/lib/api/client";
+import { formatDateTime } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 
 /** Every schedule (pending, completed, failed) for the operator. */
@@ -27,10 +28,21 @@ export function useSchedules() {
 export function useCreateSingle() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: api.createSingle,
-    onSuccess: () => {
+    mutationFn: ({
+      timeZone: _timeZone,
+      ...input
+    }: Parameters<typeof api.createSingle>[0] & { timeZone: string }) =>
+      api.createSingle(input),
+    onSuccess: (result, variables) => {
       qc.invalidateQueries({ queryKey: ["schedules"] });
-      toast.success("Send scheduled");
+      toast.success(
+        result.executeAt
+          ? `Send scheduled for ${formatDateTime(
+              result.executeAt,
+              variables.timeZone,
+            )} (${variables.timeZone})`
+          : "Send scheduled",
+      );
     },
     onError: (err) =>
       toast.error("Couldn't schedule the send", {
@@ -42,10 +54,21 @@ export function useCreateSingle() {
 export function useCreateBroadcast() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: api.createBroadcast,
-    onSuccess: () => {
+    mutationFn: ({
+      timeZone: _timeZone,
+      ...input
+    }: Parameters<typeof api.createBroadcast>[0] & { timeZone: string }) =>
+      api.createBroadcast(input),
+    onSuccess: (result, variables) => {
       qc.invalidateQueries({ queryKey: ["schedules"] });
-      toast.success("Broadcast scheduled");
+      toast.success(
+        result.executeAt
+          ? `Broadcast scheduled for ${formatDateTime(
+              result.executeAt,
+              variables.timeZone,
+            )} (${variables.timeZone})`
+          : "Broadcast scheduled",
+      );
     },
     onError: (err) =>
       toast.error("Couldn't schedule the broadcast", {

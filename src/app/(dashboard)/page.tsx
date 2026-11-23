@@ -24,7 +24,12 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { useWaStatus } from "@/hooks/use-wa";
-import { useAiSettings, useSettings, useToggleBot } from "@/hooks/use-settings";
+import {
+  useAiSettings,
+  useBrowserTimeZone,
+  useSettings,
+  useToggleBot,
+} from "@/hooks/use-settings";
 import { useBroadcasts } from "@/hooks/use-broadcasts";
 import { useSchedules } from "@/hooks/use-schedules";
 import { describeWaStatus, TONE } from "@/lib/wa-state";
@@ -209,7 +214,8 @@ function PersonaStat() {
 function NextDispatch() {
   const { data, isLoading, isError } = useSchedules();
   const { data: settings } = useSettings();
-  const timeZone = settings?.timeZone ?? "UTC";
+  const browserTimeZone = useBrowserTimeZone();
+  const timeZone = settings?.timeZone ?? browserTimeZone;
   const upcoming = (data ?? [])
     .filter((s) => s.status === "pending" || s.status === "processing")
     .sort(

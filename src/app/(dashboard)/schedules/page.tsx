@@ -57,7 +57,7 @@ import {
   useDeleteSchedule,
   useSchedules,
 } from "@/hooks/use-schedules";
-import { useSettings } from "@/hooks/use-settings";
+import { useBrowserTimeZone, useSettings } from "@/hooks/use-settings";
 import type { BroadcastList, Schedule, ScheduleStatus } from "@/lib/types";
 import {
   cn,
@@ -96,7 +96,8 @@ function SchedulesView() {
   const { data, isLoading, isError, error, refetch } = useSchedules();
   const { data: lists } = useBroadcasts();
   const { data: settings } = useSettings();
-  const timeZone = settings?.timeZone ?? "UTC";
+  const browserTimeZone = useBrowserTimeZone();
+  const timeZone = settings?.timeZone ?? browserTimeZone;
 
   const { upcoming, history } = useMemo(() => {
     const all = data ?? [];
@@ -132,6 +133,22 @@ function SchedulesView() {
       />
 
       <SchedulingCaveat />
+      {!settings?.timeZone && (
+        <Alert className="border-warn/30 bg-warn/8 text-foreground [&>svg]:text-warn">
+          <InfoIcon />
+          <AlertTitle>Time zone not saved yet</AlertTitle>
+          <AlertDescription className="text-muted-foreground">
+            Using this device&apos;s time zone ({timeZone}). Save it in{" "}
+            <Link
+              href="/settings"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Settings
+            </Link>{" "}
+            so your schedule times stay consistent across devices.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {isLoading ? (
         <div className="space-y-2">
@@ -179,17 +196,16 @@ function SchedulesView() {
   );
 }
 
-/** SECURITY.md: sends fire from the server's job runner, not the browser. */
 function SchedulingCaveat() {
   return (
     <Alert className="border-warn/30 bg-warn/8 text-foreground [&>svg]:text-warn">
       <InfoIcon />
-      <AlertTitle>Sends fire from the server</AlertTitle>
+      <AlertTitle>Schedules are delivered by the backend</AlertTitle>
       <AlertDescription className="text-muted-foreground">
-        Schedules are queued here and dispatched by the server&apos;s job runner
-        (QStash). If it isn&apos;t configured on the server, schedules save but
-        never send — confirm it&apos;s set up with your admin.
-        {" "}Times use your saved time zone.
+        Delivery requires the backend&apos;s QStash, Redis, and public base URL
+        configuration. If scheduling is unavailable, the API reports an error
+        instead of accepting a send it cannot queue. Times use your saved time
+        zone.
       </AlertDescription>
     </Alert>
   );
@@ -369,12 +385,22 @@ function NewScheduleButton({
     };
     if (type === "single") {
       createSingle.mutate(
-        { targetJid: target.trim(), messageContent: message, executeAt },
+        {
+          targetJid: target.trim(),
+          messageContent: message,
+          executeAt,
+          timeZone,
+        },
         { onSuccess },
       );
     } else {
       createBroadcast.mutate(
-        { listId: Number(listId), messageContent: message, executeAt },
+        {
+          listId: Number(listId),
+          messageContent: message,
+          executeAt,
+          timeZone,
+        },
         { onSuccess },
       );
     }

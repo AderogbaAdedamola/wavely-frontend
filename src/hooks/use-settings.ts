@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -13,6 +14,19 @@ import {
 } from "@/lib/api/settings";
 import { useAuth } from "@/components/providers/auth-provider";
 import type { AiSettings, SettingsState } from "@/lib/types";
+
+const subscribeToTimeZone = () => () => {};
+const getServerTimeZone = () => "UTC";
+const getClientTimeZone = () =>
+  Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
+export function useBrowserTimeZone() {
+  return useSyncExternalStore(
+    subscribeToTimeZone,
+    getClientTimeZone,
+    getServerTimeZone,
+  );
+}
 
 export function useSettings() {
   const { token } = useAuth();
@@ -62,11 +76,13 @@ export function useSaveLocaleSettings() {
     mutationFn: ({
       countryCode,
       timeZone,
+      saveCountry,
     }: {
       countryCode: string;
       timeZone: string;
+      saveCountry: boolean;
     }) =>
-      countryCode
+      saveCountry && countryCode
         ? setLocale(countryCode, timeZone)
         : setTimeZone(timeZone),
     onSuccess: (result) => {

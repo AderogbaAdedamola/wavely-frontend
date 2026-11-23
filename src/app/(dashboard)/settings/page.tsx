@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2Icon } from "lucide-react";
+import { Loader2Icon, MapPinIcon, RotateCcwIcon } from "lucide-react";
 
 import { PageHeader } from "@/components/common/page-header";
 import { GlobalConfigNote } from "@/components/common/global-config-note";
@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   useAiSettings,
+  useBrowserTimeZone,
   useSaveAiSettings,
   useSaveLocaleSettings,
   useSettings,
@@ -33,6 +34,8 @@ import {
   isValidTimeZone,
   cn,
 } from "@/lib/utils";
+
+const TIME_ZONE_OPTIONS = getTimeZoneOptions();
 
 export default function SettingsPage() {
   return (
@@ -51,6 +54,8 @@ export default function SettingsPage() {
 
 function LocaleCard() {
   const { data, isLoading, isError, error, refetch } = useSettings();
+  const browserTimeZone = useBrowserTimeZone();
+  const initialTimeZone = data?.timeZone ?? browserTimeZone;
 
   return (
     <Card>
@@ -68,9 +73,11 @@ function LocaleCard() {
           <ErrorState error={error} onRetry={() => refetch()} />
         ) : (
           <LocaleForm
-            key={`${data?.countryCode ?? ""}:${data?.timeZone ?? ""}`}
+            key={`${data?.countryCode ?? ""}:${initialTimeZone}:${browserTimeZone}`}
             initialCountryCode={data?.countryCode ?? ""}
-            initialTimeZone={data?.timeZone ?? "UTC"}
+            initialTimeZone={initialTimeZone}
+            isTimeZoneSaved={!!data?.timeZone}
+            browserTimeZone={browserTimeZone}
           />
         )}
       </CardContent>
@@ -81,22 +88,37 @@ function LocaleCard() {
 function LocaleForm({
   initialCountryCode,
   initialTimeZone,
+  isTimeZoneSaved,
+  browserTimeZone,
 }: {
   initialCountryCode: string;
   initialTimeZone: string;
+  isTimeZoneSaved: boolean;
+  browserTimeZone: string;
 }) {
   const save = useSaveLocaleSettings();
   const [countryCode, setCountryCode] = useState(initialCountryCode);
   const [timeZone, setTimeZone] = useState(initialTimeZone);
   const trimmedCountryCode = countryCode.trim().toUpperCase();
+  const normalizedInitialCountryCode = initialCountryCode.trim().toUpperCase();
   const countryValid =
     /^[A-Z]{2}$/.test(trimmedCountryCode) ||
-    (trimmedCountryCode === "" && !initialCountryCode);
+    (trimmedCountryCode === "" && !normalizedInitialCountryCode);
   const timeZoneValid = isValidTimeZone(timeZone.trim());
   const dirty =
-    trimmedCountryCode !== initialCountryCode ||
+    trimmedCountryCode !== normalizedInitialCountryCode ||
     timeZone.trim() !== initialTimeZone;
-  const timeZones = getTimeZoneOptions();
+  const formattedNow = isValidTimeZone(timeZone.trim())
+    ? new Intl.DateTimeFormat(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: timeZone.trim(),
+        timeZoneName: "short",
+      }).format(new Date())
+    : null;
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -104,6 +126,7 @@ function LocaleForm({
     save.mutate({
       countryCode: trimmedCountryCode,
       timeZone: timeZone.trim(),
+      saveCountry: trimmedCountryCode !== normalizedInitialCountryCode,
     });
   }
 
@@ -111,7 +134,7 @@ function LocaleForm({
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="countryCode">Country code (optional)</Label>
+          <Label htmlFor="countryCode">Country code (optional when unset)</Label>
           <Input
             id="countryCode"
             value={countryCode}
@@ -129,7 +152,20 @@ function LocaleForm({
           )}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="timeZone">IANA time zone</Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="timeZone">IANA time zone</Label>
+            {timeZone.trim() !== browserTimeZone && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="xs"
+                onClick={() => setTimeZone(browserTimeZone)}
+              >
+                <RotateCcwIcon />
+                Use this device
+              </Button>
+            )}
+          </div>
           <Input
             id="timeZone"
             list="wavely-time-zones"
@@ -137,9 +173,17 @@ function LocaleForm({
             onChange={(e) => setTimeZone(e.target.value)}
             placeholder="Africa/Lagos"
             aria-invalid={!timeZoneValid}
+            autoCapitalize="off"
+            spellCheck={false}
           />
           <datalist id="wavely-time-zones">
-            {[...new Set([...timeZones, initialTimeZone])].map((zone) => (
+            {[
+              ...new Set([
+                ...TIME_ZONE_OPTIONS,
+                initialTimeZone,
+                browserTimeZone,
+              ]),
+            ].map((zone) => (
               <option key={zone} value={zone} />
             ))}
           </datalist>
@@ -150,10 +194,19 @@ function LocaleForm({
           )}
         </div>
       </div>
+      <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <MapPinIcon className="size-4 shrink-0" />
+        {formattedNow
+          ? `Current time in ${timeZone.trim()}: ${formattedNow}`
+          : "Enter a valid time zone to preview its current time."}
+      </p>
       <Alert>
         <AlertDescription>
-          Country defaults may be inferred from your WhatsApp number. Your
-          selected time zone determines when scheduled sends run.
+          {isTimeZoneSaved
+            ? "Your saved time zone is used for schedule entry and display."
+            : "This device's time zone is preselected. Save it to use the same schedule time zone across devices."}{" "}
+          Country defaults may be inferred from your WhatsApp number. A country
+          can have multiple time zones; select the one you actually use.
         </AlertDescription>
       </Alert>
       <div className="flex justify-end">
