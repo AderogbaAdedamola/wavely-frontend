@@ -105,13 +105,12 @@ function LinkedPanel() {
 
 /** Not connected — offer QR and pairing-code linking side by side. */
 function LinkingPanel({ status }: { status?: WaStatus }) {
-  const [started, setStarted] = useState(false);
   const connect = useConnect();
   const scanning = status === "requires_scan";
   const connecting = status === "connecting";
 
   const { data: qrData } = useQr(scanning);
-  const qr = qrData?.qr ?? null;
+  const qr = scanning ? qrData?.qr ?? null : null;
 
   return (
     <Card>
@@ -132,12 +131,11 @@ function LinkingPanel({ status }: { status?: WaStatus }) {
           <TabsContent value="qr" className="pt-5">
             <QrTab
               qr={qr}
-              waiting={connecting || ((scanning || started) && !qr)}
+              waiting={
+                connect.isPending || connecting || (scanning && !qr)
+              }
               generating={connect.isPending}
-              onGenerate={() => {
-                setStarted(true);
-                connect.mutate();
-              }}
+              onGenerate={() => connect.mutate()}
             />
           </TabsContent>
 

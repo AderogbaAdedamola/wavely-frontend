@@ -49,6 +49,7 @@ export function useConnect() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: connect,
+    onMutate: () => qc.setQueryData(["wa", "qr"], null),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["wa", "status"] }),
     onError: (err) =>
       toast.error("Couldn't start linking", {

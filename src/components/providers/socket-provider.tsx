@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { API_BASE_URL } from "@/lib/config";
 import { useAuth } from "./auth-provider";
 import type { QrResponse, WaStatus, WaStatusResponse } from "@/lib/types";
 
@@ -23,10 +22,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!token) return;
 
-    const socket: Socket = io(API_BASE_URL || undefined, {
+    const socket: Socket = io(process.env.NEXT_PUBLIC_SOCKET_URL, {
       auth: { token },
-      // Polling first so the socket connects through the Next.js proxy even when the
-      // WebSocket upgrade isn't proxied in dev; it upgrades to WS when available.
+      // Connect directly to the backend; REST requests continue through the Next.js proxy.
+      // Polling remains enabled as a fallback before the WebSocket upgrade.
       transports: ["polling", "websocket"],
     });
 
@@ -42,8 +41,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       if (data.qr) {
         queryClient.setQueryData<QrResponse>(["wa", "qr"], { qr: data.qr });
       }
-      if (data.status === "connected") {
+      if (data.status !== "requires_scan") {
         queryClient.setQueryData(["wa", "qr"], null);
+      }
+      if (data.status === "connected") {
         queryClient.invalidateQueries({ queryKey: ["groups"] });
       }
     });
