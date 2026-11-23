@@ -3,7 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRightIcon, Loader2Icon, MegaphoneIcon, PlusIcon } from "lucide-react";
+import {
+  ArrowRightIcon,
+  Loader2Icon,
+  MegaphoneIcon,
+  PlusIcon,
+  UsersRoundIcon,
+} from "lucide-react";
 
 import { PageHeader } from "@/components/common/page-header";
 import { EmptyState } from "@/components/common/empty-state";
@@ -23,7 +29,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useBroadcasts, useCreateList } from "@/hooks/use-broadcasts";
+import {
+  useBroadcasts,
+  useCreateList,
+  useCreateListWithMembers,
+  useSelectableMembers,
+} from "@/hooks/use-broadcasts";
 import { formatDateTime } from "@/lib/utils";
 
 export default function BroadcastsPage() {
@@ -84,20 +95,39 @@ export default function BroadcastsPage() {
 function NewListButton() {
   const router = useRouter();
   const create = useCreateList();
+  const createWithMembers = useCreateListWithMembers();
+  const selectable = useSelectableMembers();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const pending = create.isPending || createWithMembers.isPending;
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    create.mutate(trimmed, {
-      onSuccess: (res) => {
-        setOpen(false);
-        setName("");
-        router.push(`/broadcasts/${res.listId}`);
-      },
-    });
+    const onSuccess = (res: { listId: number }) => {
+      setOpen(false);
+      setName("");
+      setSelected([]);
+      router.push(`/broadcasts/${res.listId}`);
+    };
+    if (selected.length > 0) {
+      createWithMembers.mutate(
+        { name: trimmed, members: selected },
+        { onSuccess },
+      );
+    } else {
+      create.mutate(trimmed, { onSuccess });
+    }
+  }
+
+  function toggleMember(jid: string) {
+    setSelected((current) =>
+      current.includes(jid)
+        ? current.filter((item) => item !== jid)
+        : [...current, jid],
+    );
   }
 
   return (
@@ -127,14 +157,53 @@ function NewListButton() {
               placeholder="VIP customers"
             />
           </div>
+          {selectable.isError ? (
+            <p className="mb-4 text-xs text-destructive">
+              WhatsApp members couldn&apos;t be loaded. Connect your line and try again.
+            </p>
+          ) : selectable.data ? (
+            <div className="mb-4 space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-medium">
+                <UsersRoundIcon className="size-3.5" />
+                Add WhatsApp members now
+                {selected.length > 0 && (
+                  <span className="ml-auto text-muted-foreground">
+                    {selected.length} selected
+                  </span>
+                )}
+              </div>
+              <div className="max-h-48 divide-y divide-border overflow-y-auto rounded-lg border border-border">
+                {[...selectable.data.contacts, ...selectable.data.groups].map(
+                  (member) => (
+                    <label
+                      key={member.jid}
+                      className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-muted/50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(member.jid)}
+                        onChange={() => toggleMember(member.jid)}
+                        className="size-4 accent-primary"
+                      />
+                      <span className="min-w-0 flex-1 truncate">
+                        {member.name || member.jid}
+                      </span>
+                    </label>
+                  ),
+                )}
+              </div>
+            </div>
+          ) : selectable.isLoading ? (
+            <Skeleton className="mb-4 h-24 w-full" />
+          ) : null}
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={!name.trim() || create.isPending}>
-              {create.isPending && <Loader2Icon className="animate-spin" />}
+            <Button type="submit" disabled={!name.trim() || pending}>
+              {pending && <Loader2Icon className="animate-spin" />}
               Create list
             </Button>
           </DialogFooter>

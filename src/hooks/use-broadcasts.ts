@@ -33,6 +33,29 @@ export function useCreateList() {
   });
 }
 
+export function useCreateListWithMembers() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; members: string[] }) =>
+      api.createListWithMembers(input.name, input.members),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["broadcasts"] });
+      toast.success("List created");
+    },
+    onError: (err) =>
+      toastError(err, "Couldn't create the list"),
+  });
+}
+
+export function useSelectableMembers() {
+  const { token } = useAuth();
+  return useQuery({
+    queryKey: ["broadcast", "selectable-members"],
+    queryFn: api.getSelectableMembers,
+    enabled: !!token,
+  });
+}
+
 /* --------------------------- members ----------------------------- */
 
 export function useMembers(listId: number) {

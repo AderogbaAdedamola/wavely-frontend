@@ -76,6 +76,19 @@ export interface BroadcastContent {
   created_at: string;
 }
 
+export interface SelectableMember {
+  jid: string;
+  type: "contact" | "group";
+  name: string;
+  description?: string;
+  participantCount?: number;
+}
+
+export interface SelectableMembersResponse {
+  contacts: SelectableMember[];
+  groups: SelectableMember[];
+}
+
 export type ScheduleType = "single" | "broadcast";
 export type ScheduleStatus = "pending" | "completed" | "failed";
 

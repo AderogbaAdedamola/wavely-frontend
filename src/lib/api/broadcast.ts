@@ -1,5 +1,9 @@
 import { apiRequest } from "@/lib/api/client";
-import type { BroadcastContent, BroadcastList } from "@/lib/types";
+import type {
+  BroadcastContent,
+  BroadcastList,
+  SelectableMembersResponse,
+} from "@/lib/types";
 
 export function listLists() {
   return apiRequest<{ lists: BroadcastList[] }>("/api/broadcast");
@@ -9,6 +13,23 @@ export function createList(name: string) {
   return apiRequest<{ success: boolean; listId: number }>("/api/broadcast", {
     method: "POST",
     body: { name },
+  });
+}
+
+export function getSelectableMembers() {
+  return apiRequest<SelectableMembersResponse>(
+    "/api/broadcast/selectable-members",
+  );
+}
+
+export function createListWithMembers(name: string, members: string[]) {
+  return apiRequest<{
+    success: boolean;
+    listId: number;
+    memberCount: number;
+  }>("/api/broadcast/with-members", {
+    method: "POST",
+    body: { name, members },
   });
 }
 
