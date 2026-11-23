@@ -127,3 +127,84 @@ export interface SettingsState {
   countryCode?: string;
   timeZone?: string;
 }
+
+export interface AdminOverview {
+  generatedAt: string;
+  system: {
+    uptimeSeconds: number;
+    memoryBytes: {
+      rss: number;
+      heapTotal: number;
+      heapUsed: number;
+    };
+    nodeVersion: string;
+    environment: string;
+  };
+  users: {
+    total: number;
+    verified: number;
+    unverified: number;
+    botActive: number;
+  };
+  whatsappSessions: {
+    disconnected: number;
+    connecting: number;
+    requires_scan: number;
+    reconnecting: number;
+    connected: number;
+    requires_reauth: number;
+  };
+  schedules: {
+    pending: number;
+    processing: number;
+    completed: number;
+    failed: number;
+  };
+  deliveries: {
+    pending: { total: number; last24Hours: number };
+    delivered: { total: number; last24Hours: number };
+    failed: { total: number; last24Hours: number };
+  };
+  messages: {
+    total: number;
+    last24Hours: number;
+  };
+}
+
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  email_verified: boolean;
+  is_bot_active: boolean;
+  created_at: string;
+  whatsapp_status: string | null;
+  whatsapp_status_updated_at: string | null;
+}
+
+export interface AdminUsersResponse {
+  total: number;
+  users: AdminUser[];
+}
+
+export type AdminScheduleStatus = ScheduleStatus;
+
+export interface AdminSchedule {
+  id: number;
+  owner_jid: string;
+  owner_name: string;
+  owner_email: string;
+  type: ScheduleType;
+  status: AdminScheduleStatus;
+  execute_at: string;
+  created_at: string;
+  recipient_count: number;
+  pending_count: number;
+  delivered_count: number;
+  failed_count: number;
+}
+
+export interface AdminSchedulesResponse {
+  total: number;
+  schedules: AdminSchedule[];
+}

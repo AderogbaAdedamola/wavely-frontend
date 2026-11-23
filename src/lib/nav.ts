@@ -3,6 +3,7 @@ import {
   MegaphoneIcon,
   PlugZapIcon,
   RadioIcon,
+  ShieldCheckIcon,
   SlidersHorizontalIcon,
   SquareSlashIcon,
   UsersRoundIcon,
@@ -44,6 +45,10 @@ export const NAV: NavSection[] = [
       { href: "/commands", label: "Commands", icon: SquareSlashIcon },
       { href: "/settings", label: "Settings", icon: SlidersHorizontalIcon },
     ],
+  },
+  {
+    label: "Administration",
+    items: [{ href: "/admin", label: "Admin overview", icon: ShieldCheckIcon }],
   },
 ];
 
