@@ -110,7 +110,7 @@ function LinkingPanel({ status }: { status?: WaStatus }) {
   const scanning = status === "requires_scan";
   const connecting = status === "connecting";
 
-  const { data: qrData } = useQr(scanning || started);
+  const { data: qrData } = useQr(scanning);
   const qr = qrData?.qr ?? null;
 
   return (
